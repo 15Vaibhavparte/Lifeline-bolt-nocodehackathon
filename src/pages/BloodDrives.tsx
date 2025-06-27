@@ -27,6 +27,7 @@ import { DebugPanel } from '../components/DebugPanel';
 import { testSupabaseConnection } from '../utils/connectionTest';
 import { comprehensiveDatabaseTest } from '../utils/comprehensiveTest';
 import { testDatabaseAccess } from '../utils/testDatabaseAccess';
+import { testDirectApiAccess, testWithServiceKey } from '../utils/emergencyApiTest';
 
 export function BloodDrives() {
   const [activeTab, setActiveTab] = useState('upcoming');
@@ -49,6 +50,10 @@ export function BloodDrives() {
   ];
 
   useEffect(() => {
+    // Emergency: Test direct API access to bypass all potential issues
+    testDirectApiAccess();
+    testWithServiceKey();
+    
     // Run connection test first
     testSupabaseConnection();
     
