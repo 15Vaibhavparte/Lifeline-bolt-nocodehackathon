@@ -22,7 +22,8 @@ import {
 import { bloodDriveService } from '../services/bloodDriveService';
 import { donorService } from '../services/donorService';
 import { useAuthContext } from '../contexts/AuthContext';
-import { BloodDrive } from '../lib/supabase';
+import { BloodDrive, isSupabaseConfigured } from '../lib/supabase';
+import { DebugPanel } from '../components/DebugPanel';
 
 export function BloodDrives() {
   const [activeTab, setActiveTab] = useState('upcoming');
@@ -54,24 +55,41 @@ export function BloodDrives() {
   const loadBloodDrives = useCallback(async () => {
     try {
       setLoading(true);
+      setError(''); // Clear previous errors
+      
+      const startDate = new Date().toISOString().split('T')[0];
+      const endDate = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      console.log('Loading blood drives with date range:', { startDate, endDate, filterLocation });
       
       // Get active blood drives with search filters
       const upcoming = await bloodDriveService.searchBloodDrives({
         dateRange: {
-          start: new Date().toISOString().split('T')[0],
-          end: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // 90 days in the future
+          start: startDate,
+          end: endDate
         },
         city: filterLocation || undefined
       });
       
+      console.log('Upcoming blood drives fetched:', upcoming);
+      
       // Get past blood drives
       const past = await bloodDriveService.getPastBloodDrives();
+      
+      console.log('Past blood drives fetched:', past);
       
       setUpcomingEvents(upcoming || []);
       setPastEvents(past || []);
     } catch (error: any) {
-      setError('Failed to load blood drives');
+      const errorMessage = 'Failed to load blood drives: ' + (error.message || error.toString());
+      setError(errorMessage);
       console.error('Error loading blood drives:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
     } finally {
       setLoading(false);
     }
@@ -164,6 +182,21 @@ export function BloodDrives() {
           >
             <AlertCircle className="h-5 w-5 text-red-600" />
             <span className="text-red-700">{error}</span>
+          </motion.div>
+        )}
+
+        {/* Supabase Configuration Warning */}
+        {!isSupabaseConfigured && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center space-x-2"
+          >
+            <AlertCircle className="h-5 w-5 text-yellow-600" />
+            <div className="text-yellow-700">
+              <p className="font-semibold">Database not configured</p>
+              <p className="text-sm">Supabase credentials are missing or invalid. Blood drives cannot be loaded.</p>
+            </div>
           </motion.div>
         )}
 
@@ -437,6 +470,9 @@ export function BloodDrives() {
           </motion.div>
         )}
       </div>
+
+      {/* Debug Panel */}
+      <DebugPanel />
     </div>
   );
 }
