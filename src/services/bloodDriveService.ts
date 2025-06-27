@@ -11,58 +11,21 @@ export const bloodDriveService = {
     maxDistance?: number;
     userLat?: number;
     userLon?: number;
-  }) {
-    try {
+  }) {    try {
+      console.log('🔍 Starting searchBloodDrives with simplified query...');
+      
+      // Start with the absolute simplest query possible
       let query = supabase
         .from('blood_drives')
-        .select(`
-          id,
-          title,
-          description,
-          event_date,
-          start_time,
-          end_time,
-          address,
-          location_point,
-          organizer_id,
-          contact_phone,
-          contact_email,
-          is_active,
-          registered_donors,
-          capacity,
-          requirements,
-          created_at,
-          updated_at
-        `)
-        .eq('is_active', true);
+        .select('*');
+        
+      // Don't apply any filters initially to see if we can get ANY data
+      console.log('🔍 Executing basic select * query...');
       
-      // Apply date filters
-      if (filters.date) {
-        query = query.eq('event_date', filters.date);
-      } else if (filters.dateRange) {
-        query = query
-          .gte('event_date', filters.dateRange.start)
-          .lte('event_date', filters.dateRange.end);
-      } else {
-        // Default to future events
-        query = query.gte('event_date', new Date().toISOString().split('T')[0]);
-      }
+      const { data, error } = await query.limit(10);
       
-      // Apply location filters
-      if (filters.city) {
-        query = query.ilike('address', `%${filters.city}%`);
-      }
-      
-      if (filters.state) {
-        query = query.ilike('address', `%${filters.state}%`);
-      }
-      
-      // Apply organizer filter
-      if (filters.organizer) {
-        query = query.ilike('title', `%${filters.organizer}%`);
-      }
-      
-      const { data, error } = await query.order('event_date', { ascending: true });
+      console.log('🔍 Query completed. Data:', data);
+      console.log('🔍 Query error:', error);
       
       if (error) {
         console.error('Supabase query error:', error);
@@ -75,27 +38,30 @@ export const bloodDriveService = {
         throw error;
       }
       
-      // If location filtering is requested and we have coordinates
-      if (data && filters.userLat && filters.userLon && filters.maxDistance) {
-        return data.filter(drive => {
-          if (!drive.location_point) return false;
-          
-          // Extract coordinates from point data
-          // In a real app, you'd use PostGIS functions for this
-          const driveLat = drive.location_point.lat || 0;
-          const driveLon = drive.location_point.lng || 0;
-          
-          // Simple distance calculation
-          const distance = Math.sqrt(
-            Math.pow(filters.userLat! - driveLat, 2) + 
-            Math.pow(filters.userLon! - driveLon, 2)
-          ) * 111; // Rough conversion to kilometers
-          
-          return distance <= filters.maxDistance;
-        });
+      console.log('🔍 Raw data from database:', data);
+      
+      // If we got data, now try to filter it in JavaScript instead of SQL
+      if (data && data.length > 0) {
+        console.log('🔍 Filtering data in JavaScript...');
+        
+        // Filter for active drives
+        const activeDrives = data.filter(drive => drive.is_active === true);
+        console.log('🔍 Active drives:', activeDrives);
+        
+        // Filter by date range if we have active drives
+        if (filters.dateRange && activeDrives.length > 0) {
+          const filteredByDate = activeDrives.filter(drive => {
+            const driveDate = drive.event_date;
+            return driveDate >= filters.dateRange!.start && driveDate <= filters.dateRange!.end;
+          });
+          console.log('🔍 Date-filtered drives:', filteredByDate);
+          return filteredByDate;
+        }
+        
+        return activeDrives;
       }
       
-      return data;
+      return data || [];
     } catch (error: any) {
       console.error('Error in searchBloodDrives:', error);
       console.error('Error details:', {

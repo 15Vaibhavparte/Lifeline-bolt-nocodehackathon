@@ -9,27 +9,47 @@ export async function testSupabaseConnection() {
   console.log('- VITE_SUPABASE_ANON_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY ? '✅ SET' : '❌ NOT SET');
   
   try {
-    console.log('🔍 Testing basic query...');
+    console.log('🔍 Testing most basic query (SELECT *)...');
     
-    // Add a timeout to prevent hanging
-    const queryPromise = supabase
+    // Test 1: Most basic query
+    const basicQuery = supabase
+      .from('blood_drives')
+      .select('*')
+      .limit(1);
+    
+    const timeoutPromise1 = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Basic query timeout after 5 seconds')), 5000)
+    );
+    
+    const { data: basicData, error: basicError } = await Promise.race([basicQuery, timeoutPromise1]) as any;
+    
+    if (basicError) {
+      console.error('❌ Basic query failed:', basicError);
+      return { success: false, error: basicError };
+    }
+    
+    console.log('✅ Basic query successful:', basicData);
+    
+    // Test 2: Try with specific columns
+    console.log('🔍 Testing specific columns query...');
+    const specificQuery = supabase
       .from('blood_drives')
       .select('id, title, event_date')
       .limit(1);
     
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Query timeout after 10 seconds')), 10000)
+    const timeoutPromise2 = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Specific query timeout after 5 seconds')), 5000)
     );
     
-    const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
+    const { data: specificData, error: specificError } = await Promise.race([specificQuery, timeoutPromise2]) as any;
     
-    if (error) {
-      console.error('❌ Query failed:', error);
-      return { success: false, error };
+    if (specificError) {
+      console.error('❌ Specific query failed:', specificError);
+      return { success: false, error: specificError };
     }
     
-    console.log('✅ Query successful:', data);
-    return { success: true, data };
+    console.log('✅ Specific query successful:', specificData);
+    return { success: true, data: specificData };
   } catch (error) {
     console.error('❌ Unexpected error:', error);
     return { success: false, error };
