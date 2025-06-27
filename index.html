@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/lifeline-icon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Lifeline - Smart blood donor-recipient matching platform for emergency blood donations" />
+    <meta name="keywords" content="blood donation, emergency, healthcare, donor matching, lifeline" />
+    <title>Lifeline - Blood Donor Matching Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Dappier Copilot Web SDK -->
+    <script src="https://cdn.dappier.com/copilot-widget.js"></script>
+    <style>
+      .dappier-copilot-button {
+        background: linear-gradient(135deg, #dc2626, #ef4444) !important;
+        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3) !important;
+        border-radius: 50% !important;
+        width: 56px !important;
+        height: 56px !important;
+      }
+      .dappier-chat-container {
+        border: 2px solid #dc2626 !important;
+        border-radius: 16px !important;
+        bottom: 80px !important;
+        right: 24px !important;
+        width: 350px !important;
+        height: 500px !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Initialize Dappier Copilot -->
+    <script type="module">
+      // Wait for the page to load and check for environment variables
+      window.addEventListener('DOMContentLoaded', function() {
+        // Check if we're in development and have the required environment variables
+        const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        
+        // In a real implementation, these would come from your build process
+        // For now, we'll use the simulated version for development
+        if (isDevelopment) {
+          console.log('Development mode: Using simulated Dappier for testing');
+          // The DappierCopilot object is already available from the simulated script
+          // that's loaded in the React components
+        } else {
+          // Production mode: Initialize real Dappier
+          if (window.DappierCopilot && import.meta.env.VITE_DAPPIER_PROJECT_ID) {
+            window.DappierCopilot.init({
+              projectId: import.meta.env.VITE_DAPPIER_PROJECT_ID,
+              apiKey: import.meta.env.VITE_DAPPIER_API_KEY,
+              containerId: 'dappier-copilot',
+              theme: 'custom',
+              position: 'bottom-right',
+              minimized: true,
+              customCSS: `
+                .copilot-widget {
+                  --primary-color: #dc2626;
+                  --secondary-color: #ffffff;
+                  --accent-color: #ef4444;
+                  --border-radius: 12px;
+                  --font-family: 'Inter', sans-serif;
+                }
+              `
+            });
+          } else {
+            console.warn('Dappier environment variables not configured');
+          }
+        }
+      });
+    </script>
+  </body>
+</html>
