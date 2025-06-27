@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, X, AlertTriangle, CheckCircle, Info, Clock, Heart } from 'lucide-react';
+import { Bell, X, AlertTriangle, CheckCircle, Info, Clock, Heart, Calendar } from 'lucide-react';
 import { useAuthContext } from '../contexts/AuthContext';
 import { notificationService } from '../services/notificationService';
 import { supabase } from '../lib/supabase';
@@ -16,6 +16,7 @@ export function NotificationSystem({ className = '' }: NotificationSystemProps) 
   const [showNotifications, setShowNotifications] = useState(false);
   const [newNotification, setNewNotification] = useState<any | null>(null);
   const [showToast, setShowToast] = useState(false);
+  const [channel, setChannel] = useState<any>(null);
 
   // Load initial notifications
   useEffect(() => {
@@ -25,19 +26,21 @@ export function NotificationSystem({ className = '' }: NotificationSystemProps) 
     }
     
     return () => {
-      // Clean up subscription
-      if (user) {
-        supabase.removeChannel('public:notifications');
+      // Clean up subscription properly
+      if (channel) {
+        console.log('Cleaning up notification channel');
+        supabase.removeChannel(channel);
+        setChannel(null);
       }
     };
-  }, [user]);
+  }, [user]); // Remove channel from dependency to avoid infinite loops
 
   const loadNotifications = async () => {
     try {
       const userNotifications = await notificationService.getUserNotifications(user?.id || '');
       setNotifications(userNotifications || []);
       
-      const count = userNotifications?.filter(n => !n.is_read).length || 0;
+      const count = userNotifications?.filter((n: any) => !n.is_read).length || 0;
       setUnreadCount(count);
     } catch (error) {
       console.error('Failed to load notifications:', error);
@@ -45,11 +48,14 @@ export function NotificationSystem({ className = '' }: NotificationSystemProps) 
   };
 
   const setupRealtimeSubscription = () => {
-    if (!user) return;
+    if (!user || channel) return; // Don't create multiple subscriptions
+    
+    // Create a unique channel name to avoid conflicts
+    const channelName = `notifications:${user.id}:${Date.now()}`;
     
     // Subscribe to notifications table for real-time updates
-    const channel = supabase
-      .channel('public:notifications')
+    const newChannel = supabase
+      .channel(channelName)
       .on('postgres_changes', 
         { 
           event: 'INSERT', 
@@ -57,13 +63,14 @@ export function NotificationSystem({ className = '' }: NotificationSystemProps) 
           table: 'notifications',
           filter: `user_id=eq.${user.id}`
         }, 
-        (payload) => {
+        (payload: any) => {
           handleNewNotification(payload.new);
         }
       )
       .subscribe();
       
-    console.log('Subscribed to real-time notifications');
+    setChannel(newChannel);
+    console.log('Subscribed to real-time notifications with channel:', channelName);
   };
 
   const handleNewNotification = (notification: any) => {

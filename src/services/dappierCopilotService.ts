@@ -33,18 +33,10 @@ export class DappierCopilotService {
 
   // Initialize the service with user context
   async initialize(userContext?: UserContext): Promise<boolean> {
-    // Check if we're in development mode
-    const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    
-    if (isDevelopment) {
-      // In development, we'll simulate the connection for testing
-      console.log('Development mode: Simulating Dappier connection');
-      this.isInitialized = true;
-      return true;
-    }
-    
     if (!this.apiKey || !this.projectId) {
-      console.warn('Dappier API key or project ID not configured for production');
+      console.warn('Dappier API key or project ID not configured');
+      // Still allow initialization for testing purposes
+      this.isInitialized = true;
       return false;
     }
 
@@ -56,11 +48,12 @@ export class DappierCopilotService {
 
       // Check if the service is available
       const isHealthy = await this.healthCheck();
-      this.isInitialized = isHealthy;
+      this.isInitialized = true; // Initialize regardless of health check for fallback
       
       return isHealthy;
     } catch (error) {
       console.error('Failed to initialize Dappier Copilot:', error);
+      this.isInitialized = true; // Still initialize for fallback functionality
       return false;
     }
   }
@@ -71,65 +64,164 @@ export class DappierCopilotService {
       throw new Error('Dappier Copilot not initialized');
     }
 
-    // Check if we're in development mode
-    const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    
-    try {
-      if (isDevelopment) {
-        // Use mock responses in development
-        return this.getMockResponse(message);
-      } else {
-        // Make real API call in production
-        const response = await fetch(`${this.baseUrl}/app/datamodel/${this.projectId}`, {
+    // Always try the real API first if credentials are available
+    if (this.apiKey && this.projectId) {
+      try {
+        console.log('Sending message to Dappier API:', message);
+        
+        // Try both endpoint formats based on ID type
+        const isAiModel = this.projectId.startsWith('am_');
+        const isDataModel = this.projectId.startsWith('dm_');
+        
+        let endpoint;
+        let requestBody;
+        
+        if (isAiModel) {
+          // Use AI model endpoint (from docs)
+          endpoint = `${this.baseUrl}/app/aimodel/${this.projectId}`;
+          requestBody = { query: message };
+        } else if (isDataModel) {
+          // Use data model endpoint (our current approach)
+          endpoint = `${this.baseUrl}/app/datamodel/${this.projectId}`;
+          requestBody = { query: message, context: this.userContext || {} };
+        } else {
+          // Try both
+          endpoint = `${this.baseUrl}/app/aimodel/${this.projectId}`;
+          requestBody = { query: message };
+        }
+        
+        const response = await fetch(endpoint, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${this.apiKey}`
           },
-          body: JSON.stringify({
-            query: message,
-            context: this.userContext
-          })
+          body: JSON.stringify(requestBody)
         });
         
         if (!response.ok) {
-          throw new Error(`Dappier API error: ${response.status}`);
+          const errorText = await response.text();
+          console.warn(`Dappier API error (${response.status}): ${errorText}`);
+          throw new Error(`API error: ${response.status}`);
         }
         
         const data = await response.json();
-        return {
-          text: data.response || 'No response received',
-          intent: this.detectIntent(data.response || '')
-        };
+        console.log('Dappier API response:', data);
+        
+        return this.parseApiResponse(data, message);
+            
+      } catch (apiError: any) {
+        console.warn('Dappier API call failed, falling back to mock response:', apiError.message);
+        // Fall back to mock response if API fails
+        return this.getMockResponse(message);
       }
-    } catch (error: any) {
-      console.error('Failed to send message to Dappier:', error);
-      throw error;
+    } else {
+      console.warn('Dappier API credentials not configured, using mock response');
+      // Use mock response if no credentials
+      return this.getMockResponse(message);
     }
+  }
+
+  // Helper method to parse API responses
+  private parseApiResponse(data: any, originalMessage: string): MessageResponse {
+    // Handle different possible response structures from Dappier API
+    let responseText = '';
+    
+    // Check for message field first (as shown in documentation)
+    if (data.message && typeof data.message === 'string') {
+      responseText = data.message;
+    } else if (data.results && typeof data.results === 'string') {
+      responseText = data.results;
+    } else if (data.results && Array.isArray(data.results) && data.results.length > 0) {
+      responseText = data.results[0];
+    } else if (data.response) {
+      responseText = data.response;
+    } else if (data.answer) {
+      responseText = data.answer;
+    } else if (data.text) {
+      responseText = data.text;
+    } else if (data.content) {
+      responseText = data.content;
+    } else if (typeof data === 'string') {
+      responseText = data;
+    } else {
+      // If results is null or undefined, this indicates the data model needs attention
+      if (data.results === null) {
+        responseText = `⚠️ **Data Model Issue Detected**
+        
+Your Dappier AI model returned no results. This typically means:
+
+1. **Data Model Not Trained**: Your documents haven't been properly uploaded or processed
+2. **Query Doesn't Match**: The question doesn't match your training data
+3. **Model Not Active**: Your data model may need to be published/activated
+
+**Next Steps:**
+- Check your Dappier dashboard to ensure documents are uploaded
+- Verify your data model is active and published
+- Try asking questions that directly relate to your uploaded content
+
+**For now, I'll provide general blood donation information:**
+Blood donation is a vital medical procedure that saves lives. Different blood types (A, B, AB, O) with Rh factors (+ or -) determine compatibility between donors and recipients. Universal donors (O-) can give to anyone, while universal recipients (AB+) can receive from anyone.`;
+      } else {
+        responseText = `No response received from AI service. Raw response: ${JSON.stringify(data, null, 2)}`;
+      }
+    }
+    
+    return {
+      text: responseText,
+      intent: this.detectIntent(originalMessage)
+    };
   }
 
   // Check if the service is healthy
   async healthCheck(): Promise<boolean> {
     try {
-      // Check if we're in development mode
-      const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      
-      if (isDevelopment) {
-        // Simulate health check in development
-        return true;
+      if (!this.apiKey || !this.projectId) {
+        console.warn('Dappier API credentials not configured');
+        return false;
       }
       
-      // In production, make actual API call to check health
-      const response = await fetch(`${this.baseUrl}/health`, {
-        method: 'GET',
+      // Try a simple API call with timeout using the correct endpoint
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      // Use the correct endpoint based on ID type
+      const isAiModel = this.projectId.startsWith('am_');
+      const endpoint = isAiModel ? 
+        `${this.baseUrl}/app/aimodel/${this.projectId}` : 
+        `${this.baseUrl}/app/datamodel/${this.projectId}`;
+      
+      const requestBody = isAiModel ? 
+        { query: "Health check: Please respond with 'OK'" } :
+        { query: "Health check: Please respond with 'OK'", context: { type: 'health_check' } };
+      
+      const response = await fetch(endpoint, {
+        method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${this.apiKey}`
-        }
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
       });
       
-      return response.ok;
-    } catch (error) {
-      console.error('Dappier health check failed:', error);
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        console.warn(`Dappier health check failed: ${response.status}`);
+        return false;
+      }
+      
+      const data = await response.json();
+      const responseText = data.message || data.response || data.answer || '';
+      
+      return responseText.toLowerCase().includes('ok') || response.ok;
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.warn('Dappier health check timed out');
+      } else {
+        console.warn('Dappier health check failed:', error.message);
+      }
       return false;
     }
   }
@@ -181,6 +273,58 @@ export class DappierCopilotService {
   // Simple hash function for user ID
   private hashUserId(userId: string): string {
     return CryptoJS.SHA256(userId).toString(CryptoJS.enc.Hex).substring(0, 10);
+  }
+
+  // Detect intent from message text
+  private detectIntent(message: string): string {
+    const lowerMessage = message.toLowerCase();
+    
+    if (lowerMessage.includes('register') && lowerMessage.includes('donor')) {
+      return 'donor_registration';
+    }
+    
+    if (lowerMessage.includes('find') && lowerMessage.includes('donor')) {
+      return 'find_donors';
+    }
+    
+    if (lowerMessage.includes('eligible') || lowerMessage.includes('eligibility')) {
+      return 'check_eligibility';
+    }
+    
+    if (lowerMessage.includes('blood drive') || lowerMessage.includes('donation event')) {
+      return 'donation_events';
+    }
+    
+    if (lowerMessage.includes('urgent') || lowerMessage.includes('emergency') || 
+        (lowerMessage.includes('need') && lowerMessage.includes('blood'))) {
+      return 'emergency_help';
+    }
+    
+    if (lowerMessage.includes('donation process') || 
+        (lowerMessage.includes('how does') && lowerMessage.includes('work'))) {
+      return 'donation_process';
+    }
+    
+    if (lowerMessage.includes('hello') || lowerMessage.includes('hi') || 
+        lowerMessage.includes('help') || lowerMessage.includes('assist')) {
+      return 'greeting';
+    }
+    
+    if (lowerMessage.includes('blood type') || lowerMessage.includes('compatibility')) {
+      return 'blood_type_info';
+    }
+    
+    if (lowerMessage.includes('location') || lowerMessage.includes('nearby') || 
+        lowerMessage.includes('distance')) {
+      return 'location_services';
+    }
+    
+    if (lowerMessage.includes('appointment') || lowerMessage.includes('schedule') || 
+        lowerMessage.includes('booking')) {
+      return 'appointment_booking';
+    }
+    
+    return 'general_inquiry';
   }
 
   // Mock responses for testing

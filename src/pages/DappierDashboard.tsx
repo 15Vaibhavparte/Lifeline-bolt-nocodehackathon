@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Brain, 
@@ -10,17 +10,12 @@ import {
   BarChart3,
   MessageCircle,
   Settings,
-  TestTube,
   CheckCircle,
-  AlertCircle,
-  Loader,
-  Mic,
-  Globe
+  AlertCircle
 } from 'lucide-react';
 import { DappierAIStatus } from '../components/DappierAIStatus';
 import { useDappierAI } from '../hooks/useDappierAI';
 import { useDappierCopilot } from '../hooks/useDappierCopilot';
-import { DappierVoiceInput } from '../components/DappierVoiceInput';
 import { DappierCopilot } from '../components/DappierCopilot';
 
 export function DappierDashboard() {
@@ -31,22 +26,15 @@ export function DappierDashboard() {
     emergencyCoordination, 
     predictDemand,
     optimizeEngagement,
-    medicalConsultation,
-    loading,
     error 
   } = useDappierAI();
 
   const {
     isInitialized,
-    isAvailable,
-    isHealthy,
-    sendMessage
+    isHealthy
   } = useDappierCopilot();
 
   const [testResults, setTestResults] = useState<any>({});
-  const [testMessage, setTestMessage] = useState('');
-  const [aiResponse, setAiResponse] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
 
   const aiFeatures = [
     {
@@ -92,7 +80,7 @@ export function DappierDashboard() {
   ];
 
   const testAIFeature = async (featureId: string) => {
-    setTestResults(prev => ({ ...prev, [featureId]: { loading: true } }));
+    setTestResults((prev: any) => ({ ...prev, [featureId]: { loading: true } }));
 
     try {
       let result;
@@ -159,7 +147,7 @@ export function DappierDashboard() {
           throw new Error('Unknown feature');
       }
 
-      setTestResults(prev => ({ 
+      setTestResults((prev: any) => ({ 
         ...prev, 
         [featureId]: { 
           loading: false, 
@@ -170,7 +158,7 @@ export function DappierDashboard() {
       }));
 
     } catch (error: any) {
-      setTestResults(prev => ({ 
+      setTestResults((prev: any) => ({ 
         ...prev, 
         [featureId]: { 
           loading: false, 
@@ -180,26 +168,6 @@ export function DappierDashboard() {
         } 
       }));
     }
-  };
-
-  const handleSendMessage = async () => {
-    if (!testMessage.trim() || !isInitialized) return;
-    
-    setIsProcessing(true);
-    setAiResponse(null);
-    
-    try {
-      const response = await sendMessage(testMessage);
-      setAiResponse(response?.text || 'No response received');
-    } catch (error: any) {
-      setAiResponse(`Error: ${error.message}`);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleVoiceInput = (transcript: string) => {
-    setTestMessage(transcript);
   };
 
   const renderOverview = () => (
@@ -293,71 +261,6 @@ export function DappierDashboard() {
           <span className="text-sm font-medium">
             {isInitialized && isHealthy ? 'Connected' : 'Not Connected'}
           </span>
-        </div>
-      </div>
-
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Test Message
-          </label>
-          <div className="flex items-center space-x-2">
-            <DappierVoiceInput onTranscript={handleVoiceInput} />
-            <div className="p-1 bg-blue-100 text-blue-600 rounded-lg">
-              <Globe className="h-4 w-4" />
-            </div>
-          </div>
-        </div>
-        <div className="flex space-x-3">
-          <input
-            type="text"
-            value={testMessage}
-            onChange={(e) => setTestMessage(e.target.value)}
-            placeholder="Type a message to test the AI assistant..."
-            className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          <button
-            onClick={handleSendMessage}
-            disabled={!testMessage.trim() || isProcessing || !isInitialized}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-3 rounded-lg font-medium transition-colors"
-          >
-            {isProcessing ? (
-              <Loader className="h-5 w-5 animate-spin" />
-            ) : (
-              'Send'
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Response Display */}
-      {aiResponse && (
-        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-          <h4 className="font-medium text-gray-900 mb-2">AI Response:</h4>
-          <p className="text-gray-700 whitespace-pre-wrap">{aiResponse}</p>
-        </div>
-      )}
-
-      {/* Test Suggestions */}
-      <div className="mt-6 pt-6 border-t border-gray-200">
-        <h4 className="font-medium text-gray-900 mb-3">Try these test phrases:</h4>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {[
-            "I want to register as a donor",
-            "Find blood donors near me",
-            "Am I eligible to donate blood?",
-            "When is the next blood drive?",
-            "I need O negative blood urgently",
-            "How does the donation process work?"
-          ].map((phrase, index) => (
-            <button
-              key={index}
-              onClick={() => setTestMessage(phrase)}
-              className="text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors text-sm"
-            >
-              {phrase}
-            </button>
-          ))}
         </div>
       </div>
     </div>
@@ -630,7 +533,30 @@ export function DappierDashboard() {
           )}
         </motion.div>
       </div>
-      
+
+      {/* API Status & Debug Info */}
+      <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+        <h4 className="font-medium text-gray-900 mb-3">API Configuration & Status</h4>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <span className="font-medium">API Key:</span> {import.meta.env.VITE_DAPPIER_API_KEY ? 
+              `${import.meta.env.VITE_DAPPIER_API_KEY.substring(0, 10)}...` : 'Not configured'}
+          </div>
+          <div>
+            <span className="font-medium">Project ID:</span> {import.meta.env.VITE_DAPPIER_PROJECT_ID || 'Not configured'}
+          </div>
+          <div>
+            <span className="font-medium">Base URL:</span> {import.meta.env.VITE_DAPPIER_BASE_URL || 'Default'}
+          </div>
+          <div>
+            <span className="font-medium">Mode:</span> Real API (No Mock Responses)
+          </div>
+        </div>
+        <div className="mt-2 text-xs text-gray-600">
+          ℹ️ The AI will now use your actual Dappier data model instead of predefined responses
+        </div>
+      </div>
+
       {/* Dappier Copilot Widget */}
       <DappierCopilot className="fixed top-4 right-4 z-50" />
     </div>

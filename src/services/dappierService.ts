@@ -88,13 +88,123 @@ export class DappierService {
   // Check if the Dappier service is healthy
   async healthCheck(): Promise<boolean> {
     try {
-      const response = await this.queryAI("Health check: Please respond with 'OK' if you're working properly.");
-      
-      // The response is now guaranteed to be a string from extractResponseText
-      return response.toLowerCase().includes('ok');
-    } catch (error) {
+      // First check if we have the required configuration
+      if (!this.apiKey || !this.dataModelId) {
+        console.warn('Dappier API credentials not configured');
+        return false;
+      }
+
+      // Try a simple health check query with shorter timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+      try {
+        const endpoint = `${this.baseUrl}/app/datamodel/${this.dataModelId}`;
+        
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this.apiKey}`
+          },
+          body: JSON.stringify({
+            query: "Health check: Please respond with 'OK' if you're working properly.",
+            context: { type: 'health_check' }
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          console.warn(`Dappier API health check failed with status: ${response.status}`);
+          return false;
+        }
+
+        const data = await response.json() as DappierResponse;
+        const responseText = this.extractResponseText(data.response);
+        
+        return responseText.toLowerCase().includes('ok');
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        
+        if (fetchError.name === 'AbortError') {
+          console.warn('Dappier API health check timed out');
+        } else {
+          console.warn('Dappier API health check network error:', fetchError.message);
+        }
+        return false;
+      }
+    } catch (error: any) {
       console.error('Dappier health check failed:', error);
       return false;
+    }
+  }
+
+  // Debug method to test API connectivity
+  async testConnection(): Promise<{ success: boolean; error?: string; details?: any }> {
+    try {
+      console.log('Testing Dappier API connection...');
+      console.log('API Key:', this.apiKey ? `${this.apiKey.substring(0, 10)}...` : 'Not configured');
+      console.log('Project ID:', this.dataModelId || 'Not configured');
+      console.log('Base URL:', this.baseUrl);
+
+      if (!this.apiKey || !this.dataModelId) {
+        return {
+          success: false,
+          error: 'API credentials not configured',
+          details: { 
+            hasApiKey: !!this.apiKey, 
+            hasProjectId: !!this.dataModelId 
+          }
+        };
+      }
+
+      const endpoint = `${this.baseUrl}/app/datamodel/${this.dataModelId}`;
+      console.log('Endpoint:', endpoint);
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`
+        },
+        body: JSON.stringify({
+          query: "Test connection",
+          context: { type: 'connection_test' }
+        })
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('Error response:', errorText);
+        return {
+          success: false,
+          error: `API returned ${response.status}: ${errorText}`,
+          details: { status: response.status, errorText }
+        };
+      }
+
+      const data = await response.json();
+      console.log('Success response:', data);
+
+      return {
+        success: true,
+        details: data
+      };
+    } catch (error: any) {
+      console.error('Connection test failed:', error);
+      return {
+        success: false,
+        error: error.message,
+        details: { 
+          name: error.name,
+          stack: error.stack
+        }
+      };
     }
   }
 

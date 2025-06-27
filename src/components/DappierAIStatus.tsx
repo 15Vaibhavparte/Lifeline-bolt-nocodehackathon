@@ -12,6 +12,7 @@ import {
   Loader
 } from 'lucide-react';
 import { useDappierAI } from '../hooks/useDappierAI';
+import { dappierService } from '../services/dappierService';
 
 interface DappierAIStatusProps {
   showDetails?: boolean;
@@ -21,6 +22,8 @@ export function DappierAIStatus({ showDetails = false }: DappierAIStatusProps) {
   const { checkHealth, loading } = useDappierAI();
   const [isHealthy, setIsHealthy] = useState<boolean | null>(null);
   const [lastCheck, setLastCheck] = useState<Date | null>(null);
+  const [debugMode, setDebugMode] = useState(false);
+  const [connectionTest, setConnectionTest] = useState<any>(null);
 
   useEffect(() => {
     performHealthCheck();
@@ -38,6 +41,18 @@ export function DappierAIStatus({ showDetails = false }: DappierAIStatusProps) {
     } catch (error) {
       setIsHealthy(false);
       setLastCheck(new Date());
+    }
+  };
+
+  const testConnection = async () => {
+    try {
+      console.log('Testing Dappier connection...');
+      const result = await dappierService.testConnection();
+      setConnectionTest(result);
+      console.log('Connection test result:', result);
+    } catch (error: any) {
+      console.error('Connection test failed:', error);
+      setConnectionTest({ success: false, error: error.message });
     }
   };
 
@@ -126,13 +141,22 @@ export function DappierAIStatus({ showDetails = false }: DappierAIStatusProps) {
           </div>
         </div>
         
-        <button
-          onClick={performHealthCheck}
-          disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-        >
-          {loading ? 'Checking...' : 'Refresh Status'}
-        </button>
+        <div className="flex space-x-2">
+          <button
+            onClick={performHealthCheck}
+            disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+          >
+            {loading ? 'Checking...' : 'Refresh Status'}
+          </button>
+          
+          <button
+            onClick={testConnection}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+          >
+            Test API
+          </button>
+        </div>
       </div>
 
       {/* Overall Status */}
@@ -244,6 +268,33 @@ export function DappierAIStatus({ showDetails = false }: DappierAIStatusProps) {
               <div className="text-2xl font-bold text-purple-600">99.9%</div>
               <div className="text-sm text-purple-700">Uptime</div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Connection Test Results */}
+      {connectionTest && (
+        <div className={`mt-6 p-4 rounded-lg border ${
+          connectionTest.success 
+            ? 'border-green-200 bg-green-50'
+            : 'border-red-200 bg-red-50'
+        }`}>
+          <h5 className="font-medium text-gray-900 mb-2">
+            API Connection Test {connectionTest.success ? '✅' : '❌'}
+          </h5>
+          <div className="text-sm text-gray-600 space-y-1">
+            <p><strong>Status:</strong> {connectionTest.success ? 'Success' : 'Failed'}</p>
+            {connectionTest.error && (
+              <p><strong>Error:</strong> {connectionTest.error}</p>
+            )}
+            {connectionTest.details && (
+              <details>
+                <summary className="cursor-pointer font-medium">Technical Details</summary>
+                <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto">
+                  {JSON.stringify(connectionTest.details, null, 2)}
+                </pre>
+              </details>
+            )}
           </div>
         </div>
       )}
