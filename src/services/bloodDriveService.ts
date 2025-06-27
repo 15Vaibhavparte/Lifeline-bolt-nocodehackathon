@@ -12,25 +12,13 @@ export const bloodDriveService = {
     userLat?: number;
     userLon?: number;
   }) {    try {
-      console.log('🔍 Starting searchBloodDrives with correct columns...');
+      console.log('🔍 Starting searchBloodDrives with ultra-simple query...');
       
-      // Use only columns that actually exist in the database
-      let query = supabase
+      // Ultra-simple query - just get a few basic columns
+      const { data, error } = await supabase
         .from('blood_drives')
-        .select(`
-          id,
-          organizer_id,
-          title,
-          description,
-          event_date,
-          start_time,
-          end_time,
-          location
-        `);
-        
-      console.log('🔍 Executing query with existing columns only...');
-      
-      const { data, error } = await query.limit(10);
+        .select('id, title, event_date, location')
+        .limit(5);
       
       console.log('🔍 Query completed. Data:', data);
       console.log('🔍 Query error:', error);
@@ -46,25 +34,7 @@ export const bloodDriveService = {
         throw error;
       }
       
-      console.log('🔍 Raw data from database:', data);
-      
-      // If we got data, now try to filter it in JavaScript
-      if (data && data.length > 0) {
-        console.log('🔍 Filtering data in JavaScript...');
-        
-        // Filter by date range if specified
-        if (filters.dateRange) {
-          const filteredByDate = data.filter((drive: any) => {
-            const driveDate = drive.event_date;
-            return driveDate >= filters.dateRange!.start && driveDate <= filters.dateRange!.end;
-          });
-          console.log('🔍 Date-filtered drives:', filteredByDate);
-          return filteredByDate;
-        }
-        
-        return data;
-      }
-      
+      console.log('🔍 Successfully fetched blood drives:', data);
       return data || [];
     } catch (error: any) {
       console.error('Error in searchBloodDrives:', error);

@@ -26,6 +26,7 @@ import { BloodDrive, isSupabaseConfigured } from '../lib/supabase';
 import { DebugPanel } from '../components/DebugPanel';
 import { testSupabaseConnection } from '../utils/connectionTest';
 import { comprehensiveDatabaseTest } from '../utils/comprehensiveTest';
+import { testDatabaseAccess } from '../utils/testDatabaseAccess';
 
 export function BloodDrives() {
   const [activeTab, setActiveTab] = useState('upcoming');
@@ -50,6 +51,9 @@ export function BloodDrives() {
   useEffect(() => {
     // Run connection test first
     testSupabaseConnection();
+    
+    // Run database access test
+    testDatabaseAccess();
     
     // Run comprehensive database test
     comprehensiveDatabaseTest();
