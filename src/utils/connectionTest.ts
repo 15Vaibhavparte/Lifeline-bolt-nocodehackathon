@@ -10,10 +10,18 @@ export async function testSupabaseConnection() {
   
   try {
     console.log('🔍 Testing basic query...');
-    const { data, error } = await supabase
+    
+    // Add a timeout to prevent hanging
+    const queryPromise = supabase
       .from('blood_drives')
       .select('id, title, event_date')
       .limit(1);
+    
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Query timeout after 10 seconds')), 10000)
+    );
+    
+    const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
     
     if (error) {
       console.error('❌ Query failed:', error);

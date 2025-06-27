@@ -16,16 +16,23 @@ export const bloodDriveService = {
       let query = supabase
         .from('blood_drives')
         .select(`
-          *,
-          profiles (
-            first_name,
-            last_name,
-            phone,
-            email
-          ),
-          blood_drive_registrations (
-            count
-          )
+          id,
+          title,
+          description,
+          event_date,
+          start_time,
+          end_time,
+          address,
+          location_point,
+          organizer_id,
+          contact_phone,
+          contact_email,
+          is_active,
+          registered_donors,
+          capacity,
+          requirements,
+          created_at,
+          updated_at
         `)
         .eq('is_active', true);
       
@@ -358,14 +365,23 @@ export const bloodDriveService = {
     let query = supabase
       .from('blood_drives')
       .select(`
-        *,
-        profiles (
-          first_name,
-          last_name
-        ),
-        blood_drive_registrations (
-          attended
-        )
+        id,
+        title,
+        description,
+        event_date,
+        start_time,
+        end_time,
+        address,
+        location_point,
+        organizer_id,
+        contact_phone,
+        contact_email,
+        is_active,
+        registered_donors,
+        capacity,
+        requirements,
+        created_at,
+        updated_at
       `)
       .lt('event_date', new Date().toISOString().split('T')[0]);
 
@@ -377,11 +393,7 @@ export const bloodDriveService = {
 
     if (error) throw error;
 
-    // Calculate statistics
-    return data?.map(drive => ({
-      ...drive,
-      total_registrations: drive.blood_drive_registrations?.length || 0,
-      total_attended: drive.blood_drive_registrations?.filter(reg => reg.attended).length || 0,
-    }));
+    // Return basic data without statistics for now
+    return data || [];
   },
 };
