@@ -81,14 +81,29 @@ export function BloodDrives() {
       setUpcomingEvents(upcoming || []);
       setPastEvents(past || []);
     } catch (error: any) {
-      const errorMessage = 'Failed to load blood drives: ' + (error.message || error.toString());
+      let errorMessage = 'Failed to load blood drives';
+      
+      // Handle specific error types
+      if (error.message?.includes('404') || error.message?.includes('not found')) {
+        errorMessage = '404 Error: Blood drives table not found. Please check your database setup.';
+      } else if (error.message?.includes('JWT') || error.message?.includes('Authentication')) {
+        errorMessage = 'Authentication error: Please check your Supabase credentials.';
+      } else if (error.message?.includes('relation') && error.message?.includes('does not exist')) {
+        errorMessage = 'Database error: Blood drives table does not exist. Please run migrations.';
+      } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        errorMessage = 'Network error: Unable to connect to the database. Check your internet connection.';
+      } else if (error.message) {
+        errorMessage = `Error: ${error.message}`;
+      }
+      
       setError(errorMessage);
       console.error('Error loading blood drives:', error);
       console.error('Error details:', {
         message: error.message,
         code: error.code,
         details: error.details,
-        hint: error.hint
+        hint: error.hint,
+        stack: error.stack
       });
     } finally {
       setLoading(false);

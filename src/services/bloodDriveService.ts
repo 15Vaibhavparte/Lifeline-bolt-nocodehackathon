@@ -12,73 +12,101 @@ export const bloodDriveService = {
     userLat?: number;
     userLon?: number;
   }) {
-    let query = supabase
-      .from('blood_drives')
-      .select(`
-        *,
-        profiles (
-          first_name,
-          last_name,
-          phone,
-          email
-        ),
-        blood_drive_registrations (
-          count
-        )
-      `)
-      .eq('is_active', true);
-    
-    // Apply date filters
-    if (filters.date) {
-      query = query.eq('event_date', filters.date);
-    } else if (filters.dateRange) {
-      query = query
-        .gte('event_date', filters.dateRange.start)
-        .lte('event_date', filters.dateRange.end);
-    } else {
-      // Default to future events
-      query = query.gte('event_date', new Date().toISOString().split('T')[0]);
+    try {
+      let query = supabase
+        .from('blood_drives')
+        .select(`
+          *,
+          profiles (
+            first_name,
+            last_name,
+            phone,
+            email
+          ),
+          blood_drive_registrations (
+            count
+          )
+        `)
+        .eq('is_active', true);
+      
+      // Apply date filters
+      if (filters.date) {
+        query = query.eq('event_date', filters.date);
+      } else if (filters.dateRange) {
+        query = query
+          .gte('event_date', filters.dateRange.start)
+          .lte('event_date', filters.dateRange.end);
+      } else {
+        // Default to future events
+        query = query.gte('event_date', new Date().toISOString().split('T')[0]);
+      }
+      
+      // Apply location filters
+      if (filters.city) {
+        query = query.ilike('address', `%${filters.city}%`);
+      }
+      
+      if (filters.state) {
+        query = query.ilike('address', `%${filters.state}%`);
+      }
+      
+      // Apply organizer filter
+      if (filters.organizer) {
+        query = query.ilike('title', `%${filters.organizer}%`);
+      }
+      
+      const { data, error } = await query.order('event_date', { ascending: true });
+      
+      if (error) {
+        console.error('Supabase query error:', error);
+        console.error('Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw error;
+      }
+      
+      // If location filtering is requested and we have coordinates
+      if (data && filters.userLat && filters.userLon && filters.maxDistance) {
+        return data.filter(drive => {
+          if (!drive.location_point) return false;
+          
+          // Extract coordinates from point data
+          // In a real app, you'd use PostGIS functions for this
+          const driveLat = drive.location_point.lat || 0;
+          const driveLon = drive.location_point.lng || 0;
+          
+          // Simple distance calculation
+          const distance = Math.sqrt(
+            Math.pow(filters.userLat! - driveLat, 2) + 
+            Math.pow(filters.userLon! - driveLon, 2)
+          ) * 111; // Rough conversion to kilometers
+          
+          return distance <= filters.maxDistance;
+        });
+      }
+      
+      return data;
+    } catch (error: any) {
+      console.error('Error in searchBloodDrives:', error);
+      
+      // Check for specific error types
+      if (error.message?.includes('404') || error.code === '404') {
+        throw new Error('Blood drives table not found. Please check your database setup.');
+      }
+      
+      if (error.message?.includes('JWT')) {
+        throw new Error('Authentication error. Please check your Supabase credentials.');
+      }
+      
+      if (error.message?.includes('relation "blood_drives" does not exist')) {
+        throw new Error('Blood drives table does not exist. Please run the database migrations.');
+      }
+      
+      throw error;
     }
-    
-    // Apply location filters
-    if (filters.city) {
-      query = query.ilike('address', `%${filters.city}%`);
-    }
-    
-    if (filters.state) {
-      query = query.ilike('address', `%${filters.state}%`);
-    }
-    
-    // Apply organizer filter
-    if (filters.organizer) {
-      query = query.ilike('title', `%${filters.organizer}%`);
-    }
-    
-    const { data, error } = await query.order('event_date', { ascending: true });
-    
-    if (error) throw error;
-    
-    // If location filtering is requested and we have coordinates
-    if (data && filters.userLat && filters.userLon && filters.maxDistance) {
-      return data.filter(drive => {
-        if (!drive.location_point) return false;
-        
-        // Extract coordinates from point data
-        // In a real app, you'd use PostGIS functions for this
-        const driveLat = drive.location_point.lat || 0;
-        const driveLon = drive.location_point.lng || 0;
-        
-        // Simple distance calculation
-        const distance = Math.sqrt(
-          Math.pow(filters.userLat! - driveLat, 2) + 
-          Math.pow(filters.userLon! - driveLon, 2)
-        ) * 111; // Rough conversion to kilometers
-        
-        return distance <= filters.maxDistance;
-      });
-    }
-    
-    return data;
   },
 
   // Create a new blood drive

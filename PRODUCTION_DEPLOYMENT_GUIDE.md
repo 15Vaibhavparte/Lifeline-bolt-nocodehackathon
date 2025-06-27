@@ -28,13 +28,29 @@ VITE_SUPABASE_ANON_KEY=your-anon-key-here
 
 ### Supabase Configuration:
 1. Ensure your Supabase project is active
-2. Check that migrations have been applied:
+2. **CRITICAL**: Run database migrations to create tables AND insert sample data
+3. Check that migrations have been applied:
    ```sql
-   -- Verify blood_drives table exists
-   SELECT * FROM blood_drives LIMIT 1;
+   -- Verify blood_drives table exists and has data
+   SELECT count(*) FROM blood_drives;
+   SELECT * FROM blood_drives WHERE is_active = true ORDER BY event_date LIMIT 5;
    ```
 
-3. Verify Row Level Security policies allow public read access to blood_drives:
+### ⚠️ MOST COMMON ISSUE: Empty Database
+If blood drives don't load, the table is likely empty. Run this SQL in Supabase:
+
+```sql
+-- Insert sample blood drives
+INSERT INTO blood_drives (
+  id, title, description, event_date, start_time, end_time, 
+  location, address, expected_donors, registered_donors, 
+  contact_phone, contact_email, is_active
+) VALUES 
+(gen_random_uuid(), 'Community Blood Drive', 'Join us for a community blood donation event.', '2025-07-15', '09:00:00', '17:00:00', 'Community Center', '123 Main Street', 100, 0, '+1-555-0123', 'events@community.org', true),
+(gen_random_uuid(), 'Hospital Emergency Drive', 'Emergency blood collection drive.', '2025-08-01', '10:00:00', '16:00:00', 'City Hospital', '456 Hospital Avenue', 150, 0, '+1-555-0456', 'blood@hospital.org', true);
+```
+
+4. Verify Row Level Security policies allow public read access to blood_drives:
    ```sql
    -- Check RLS policies
    SELECT * FROM pg_policies WHERE tablename = 'blood_drives';

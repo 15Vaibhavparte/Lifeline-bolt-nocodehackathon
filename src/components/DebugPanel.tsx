@@ -18,17 +18,37 @@ export function DebugPanel() {
         supabaseConfigured: isSupabaseConfigured,
         supabaseUrl: import.meta.env.VITE_SUPABASE_URL ? 'SET' : 'NOT_SET',
         supabaseKey: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'SET' : 'NOT_SET',
+        fullSupabaseUrl: import.meta.env.VITE_SUPABASE_URL,
       },
       database: {
         connectionTest: null,
         bloodDrivesCount: null,
-        error: null
+        error: null,
+        httpStatus: null
       }
     };
 
     try {
+      // First, test if the Supabase URL is reachable
+      if (import.meta.env.VITE_SUPABASE_URL) {
+        try {
+          const healthCheck = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/rest/v1/`, {
+            method: 'HEAD',
+            headers: {
+              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            }
+          });
+          results.database.httpStatus = healthCheck.status;
+          results.database.supabaseReachable = healthCheck.ok;
+        } catch (fetchError: any) {
+          results.database.httpStatus = 'FETCH_ERROR';
+          results.database.supabaseReachable = false;
+          results.database.fetchError = fetchError.message;
+        }
+      }
+
       // Test basic connection
-      const { data: connectionData, error: connectionError } = await supabase
+      const { error: connectionError } = await supabase
         .from('blood_drives')
         .select('count')
         .limit(1);
@@ -36,6 +56,9 @@ export function DebugPanel() {
       if (connectionError) {
         results.database.error = connectionError.message;
         results.database.connectionTest = 'FAILED';
+        results.database.errorCode = connectionError.code;
+        results.database.errorDetails = connectionError.details;
+        results.database.errorHint = connectionError.hint;
       } else {
         results.database.connectionTest = 'SUCCESS';
       }
@@ -46,7 +69,7 @@ export function DebugPanel() {
         .select('*', { count: 'exact', head: true });
 
       if (countError) {
-        results.database.error = countError.message;
+        results.database.countError = countError.message;
       } else {
         results.database.bloodDrivesCount = count;
       }
@@ -67,11 +90,13 @@ export function DebugPanel() {
       } else {
         results.database.upcomingCount = upcomingData?.length || 0;
         results.database.dateRange = { startDate, endDate };
+        results.database.sampleData = upcomingData?.slice(0, 2); // First 2 records for inspection
       }
 
     } catch (error: any) {
       results.database.error = error.message;
       results.database.connectionTest = 'FAILED';
+      results.database.errorStack = error.stack;
     }
 
     setTestResults(results);
