@@ -29,6 +29,11 @@ export class DappierCopilotService {
     this.apiKey = import.meta.env.VITE_DAPPIER_API_KEY || '';
     this.projectId = import.meta.env.VITE_DAPPIER_PROJECT_ID || '';
     this.baseUrl = import.meta.env.VITE_DAPPIER_BASE_URL || 'https://api.dappier.com';
+    
+    // Debug environment variables
+    console.log('🔧 Dappier constructor - API Key:', this.apiKey ? `${this.apiKey.substring(0, 10)}...` : 'NOT SET');
+    console.log('🔧 Dappier constructor - Project ID:', this.projectId || 'NOT SET');
+    console.log('🔧 Dappier constructor - Base URL:', this.baseUrl);
   }
 
   // Initialize the service with user context
@@ -68,10 +73,13 @@ export class DappierCopilotService {
     if (this.apiKey && this.projectId) {
       try {
         console.log('Sending message to Dappier API:', message);
+        console.log('🔍 Project ID:', this.projectId);
         
         // Try both endpoint formats based on ID type
         const isAiModel = this.projectId.startsWith('am_');
         const isDataModel = this.projectId.startsWith('dm_');
+        
+        console.log('🔍 Is AI Model:', isAiModel, 'Is Data Model:', isDataModel);
         
         let endpoint;
         let requestBody;
@@ -80,15 +88,21 @@ export class DappierCopilotService {
           // Use AI model endpoint (from docs)
           endpoint = `${this.baseUrl}/app/aimodel/${this.projectId}`;
           requestBody = { query: message };
+          console.log('✅ Using AI model endpoint');
         } else if (isDataModel) {
           // Use data model endpoint (our current approach)
           endpoint = `${this.baseUrl}/app/datamodel/${this.projectId}`;
           requestBody = { query: message, context: this.userContext || {} };
+          console.log('✅ Using data model endpoint');
         } else {
           // Try both
           endpoint = `${this.baseUrl}/app/aimodel/${this.projectId}`;
           requestBody = { query: message };
+          console.log('⚠️ Unknown ID format, defaulting to AI model endpoint');
         }
+        
+        console.log('🔍 Final endpoint:', endpoint);
+        console.log('🔍 Request body:', requestBody);
         
         const response = await fetch(endpoint, {
           method: 'POST',
@@ -181,6 +195,8 @@ Blood donation is a vital medical procedure that saves lives. Different blood ty
         return false;
       }
       
+      console.log('🔍 Health check - Project ID:', this.projectId);
+      
       // Try a simple API call with timeout using the correct endpoint
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
@@ -191,9 +207,14 @@ Blood donation is a vital medical procedure that saves lives. Different blood ty
         `${this.baseUrl}/app/aimodel/${this.projectId}` : 
         `${this.baseUrl}/app/datamodel/${this.projectId}`;
       
+      console.log('🔍 Health check - Is AI Model:', isAiModel);
+      console.log('🔍 Health check - Endpoint:', endpoint);
+      
       const requestBody = isAiModel ? 
         { query: "Health check: Please respond with 'OK'" } :
         { query: "Health check: Please respond with 'OK'", context: { type: 'health_check' } };
+      
+      console.log('🔍 Health check - Request body:', requestBody);
       
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -208,7 +229,9 @@ Blood donation is a vital medical procedure that saves lives. Different blood ty
       clearTimeout(timeoutId);
       
       if (!response.ok) {
-        console.warn(`Dappier health check failed: ${response.status}`);
+        console.warn(`Dappier API health check failed with status: ${response.status}`);
+        const errorText = await response.text();
+        console.warn('Health check error response:', errorText);
         return false;
       }
       

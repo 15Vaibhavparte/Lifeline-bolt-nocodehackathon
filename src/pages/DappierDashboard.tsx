@@ -31,10 +31,63 @@ export function DappierDashboard() {
 
   const {
     isInitialized,
-    isHealthy
+    isHealthy,
+    sendMessage
   } = useDappierCopilot();
 
   const [testResults, setTestResults] = useState<any>({});
+
+  // Test-related state for the copilot tab
+  const [testPrompt, setTestPrompt] = useState('');
+  const [testResponse, setTestResponse] = useState('');
+  const [isTesting, setIsTesting] = useState(false);
+
+  // Format AI response text for better display
+  const formatAIResponse = (text: string): string => {
+    if (!text) return '';
+    
+    return text
+      // Convert numbered lists to proper HTML lists
+      .replace(/^(\d+)\.\s+(.+)$/gm, '<div class="numbered-item mb-3"><span class="inline-flex items-center justify-center w-7 h-7 bg-blue-100 text-blue-800 text-sm font-semibold rounded-full mr-3 flex-shrink-0">$1</span><span class="text-gray-800 leading-relaxed">$2</span></div>')
+      
+      // Convert bullet points to proper styled bullets  
+      .replace(/^[-•]\s+(.+)$/gm, '<div class="bullet-item mb-2 flex items-start"><span class="inline-block w-2 h-2 bg-blue-500 rounded-full mt-2.5 mr-3 flex-shrink-0"></span><span class="text-gray-800 leading-relaxed">$1</span></div>')
+      
+      // Convert headers with ### to styled headers
+      .replace(/^###\s+(.+)$/gm, '<h3 class="text-lg font-semibold text-gray-900 mt-6 mb-3 border-b border-gray-200 pb-2">$1</h3>')
+      
+      // Convert bold text **text** to styled bold
+      .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-gray-900 bg-yellow-50 px-1 rounded">$1</strong>')
+      
+      // Handle table rows with proper styling
+      .replace(/^\s*\|\s*(.+?)\s*\|\s*(.+?)\s*\|.*$/gm, (match) => {
+        // Check if it's a header row (contains dashes)
+        if (match.includes('---')) {
+          return '<div class="border-t-2 border-gray-300 my-3"></div>';
+        }
+        // Regular table row
+        const cells = match.split('|').filter(cell => cell.trim()).map(cell => cell.trim());
+        if (cells.length >= 2) {
+          return `<div class="table-row bg-slate-50 border border-gray-200 rounded-lg p-3 my-2 font-mono text-sm">
+            <div class="grid grid-cols-2 gap-4">
+              <div class="font-medium text-gray-700">${cells[0]}</div>
+              <div class="text-gray-600">${cells[1]}</div>
+            </div>
+          </div>`;
+        }
+        return match;
+      })
+      
+      // Convert lines that look like separators  
+      .replace(/^[-=]{3,}$/gm, '<hr class="my-4 border-gray-300">')
+      
+      // Handle compatibility charts with better formatting
+      .replace(/^(Compatibility|Here's a quick compatibility chart).*$/gm, '<h4 class="text-md font-medium text-gray-900 mt-4 mb-3 bg-blue-50 px-3 py-2 rounded-lg border-l-4 border-blue-400">$&</h4>')
+      
+      // Add proper line breaks
+      .replace(/\n\n+/g, '<div class="my-4"></div>')
+      .replace(/\n/g, '<br>');
+  };
 
   const aiFeatures = [
     {
@@ -231,40 +284,165 @@ export function DappierDashboard() {
     </div>
   );
 
-  const renderCopilotTest = () => (
-    <div className="bg-white rounded-xl shadow-soft p-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
-            <MessageCircle className="h-6 w-6" />
+  const renderCopilotTest = () => {
+    const handleTestPrompt = async () => {
+      if (!testPrompt.trim()) return;
+      
+      setIsTesting(true);
+      setTestResponse('');
+      
+      try {
+        const response = await sendMessage(testPrompt);
+        setTestResponse(response?.text || 'No response received');
+      } catch (error) {
+        setTestResponse(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      } finally {
+        setIsTesting(false);
+      }
+    };
+
+    return (
+      <div className="bg-white rounded-xl shadow-soft p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
+              <MessageCircle className="h-6 w-6" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Dappier AI Prompt Test</h3>
+              <p className="text-sm text-gray-600">
+                Test the AI agent with custom queries about blood donation
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">Dappier Copilot Test</h3>
-            <p className="text-sm text-gray-600">
-              Test the AI assistant with custom queries
-            </p>
+          
+          <div className="flex items-center space-x-2">
+            <div className={`p-2 rounded-full ${
+              isInitialized && isHealthy 
+                ? 'bg-green-100 text-green-600' 
+                : 'bg-red-100 text-red-600'
+            }`}>
+              {isInitialized && isHealthy ? (
+                <CheckCircle className="h-4 w-4" />
+              ) : (
+                <AlertCircle className="h-4 w-4" />
+              )}
+            </div>
+            <span className="text-sm font-medium">
+              {isInitialized && isHealthy ? 'Connected' : 'Not Connected'}
+            </span>
           </div>
         </div>
         
-        <div className="flex items-center space-x-2">
-          <div className={`p-2 rounded-full ${
-            isInitialized && isHealthy 
-              ? 'bg-green-100 text-green-600' 
-              : 'bg-red-100 text-red-600'
-          }`}>
-            {isInitialized && isHealthy ? (
-              <CheckCircle className="h-4 w-4" />
-            ) : (
-              <AlertCircle className="h-4 w-4" />
-            )}
+        {/* Prompt Input Section */}
+        <div className="space-y-6">
+          <div>
+            <label htmlFor="test-prompt" className="block text-sm font-semibold text-gray-700 mb-3">
+              Enter your question or prompt:
+            </label>
+            <textarea
+              id="test-prompt"
+              value={testPrompt}
+              onChange={(e) => setTestPrompt(e.target.value)}
+              placeholder="e.g., What are the requirements to become a blood donor? or How does blood type compatibility work?"
+              className="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-all duration-200 font-inter text-gray-800 placeholder-gray-400"
+              style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
+              rows={4}
+            />
           </div>
-          <span className="text-sm font-medium">
-            {isInitialized && isHealthy ? 'Connected' : 'Not Connected'}
-          </span>
+          
+          <button
+            onClick={handleTestPrompt}
+            disabled={!testPrompt.trim() || isTesting || !isHealthy}
+            className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 text-white py-4 px-6 rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl disabled:shadow-none transform hover:scale-[1.02] disabled:scale-100"
+          >
+            {isTesting ? (
+              <div className="flex items-center justify-center">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
+                Processing...
+              </div>
+            ) : (
+              'Send Query'
+            )}
+          </button>
+          
+          {/* Response Section */}
+          {(testResponse || isTesting) && (
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                AI Response:
+              </label>
+              <div className="bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-xl p-6 min-h-[120px] shadow-sm">
+                {isTesting ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span className="ml-3 text-gray-600 font-medium">Getting response...</span>
+                  </div>
+                ) : (
+                  <div className="prose prose-sm max-w-none">
+                    <div 
+                      className="ai-response text-gray-800 leading-relaxed"
+                      dangerouslySetInnerHTML={{
+                        __html: formatAIResponse(testResponse)
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {/* Sample Queries */}
+          <div className="mt-8 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+            <h4 className="text-base font-semibold text-blue-900 mb-4 flex items-center">
+              <span className="p-1 bg-blue-200 rounded-full mr-2">
+                <MessageCircle className="h-4 w-4 text-blue-700" />
+              </span>
+              Sample queries to try:
+            </h4>
+            <div className="grid gap-3">
+              <button
+                onClick={() => setTestPrompt("What are the requirements to become a blood donor?")}
+                className="text-left hover:bg-white hover:shadow-md p-4 rounded-lg transition-all duration-200 border border-transparent hover:border-blue-200 group"
+              >
+                <div className="flex items-start">
+                  <span className="inline-block w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0 group-hover:bg-blue-600"></span>
+                  <span className="text-blue-800 group-hover:text-blue-900 font-medium">What are the requirements to become a blood donor?</span>
+                </div>
+              </button>
+              <button
+                onClick={() => setTestPrompt("How does blood type compatibility work for donations?")}
+                className="text-left hover:bg-white hover:shadow-md p-4 rounded-lg transition-all duration-200 border border-transparent hover:border-blue-200 group"
+              >
+                <div className="flex items-start">
+                  <span className="inline-block w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0 group-hover:bg-blue-600"></span>
+                  <span className="text-blue-800 group-hover:text-blue-900 font-medium">How does blood type compatibility work for donations?</span>
+                </div>
+              </button>
+              <button
+                onClick={() => setTestPrompt("What should I do before donating blood?")}
+                className="text-left hover:bg-white hover:shadow-md p-4 rounded-lg transition-all duration-200 border border-transparent hover:border-blue-200 group"
+              >
+                <div className="flex items-start">
+                  <span className="inline-block w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0 group-hover:bg-blue-600"></span>
+                  <span className="text-blue-800 group-hover:text-blue-900 font-medium">What should I do before donating blood?</span>
+                </div>
+              </button>
+              <button
+                onClick={() => setTestPrompt("How often can I donate blood?")}
+                className="text-left hover:bg-white hover:shadow-md p-4 rounded-lg transition-all duration-200 border border-transparent hover:border-blue-200 group"
+              >
+                <div className="flex items-start">
+                  <span className="inline-block w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0 group-hover:bg-blue-600"></span>
+                  <span className="text-blue-800 group-hover:text-blue-900 font-medium">How often can I donate blood?</span>
+                </div>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -532,29 +710,6 @@ export function DappierDashboard() {
             </div>
           )}
         </motion.div>
-      </div>
-
-      {/* API Status & Debug Info */}
-      <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-        <h4 className="font-medium text-gray-900 mb-3">API Configuration & Status</h4>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <span className="font-medium">API Key:</span> {import.meta.env.VITE_DAPPIER_API_KEY ? 
-              `${import.meta.env.VITE_DAPPIER_API_KEY.substring(0, 10)}...` : 'Not configured'}
-          </div>
-          <div>
-            <span className="font-medium">Project ID:</span> {import.meta.env.VITE_DAPPIER_PROJECT_ID || 'Not configured'}
-          </div>
-          <div>
-            <span className="font-medium">Base URL:</span> {import.meta.env.VITE_DAPPIER_BASE_URL || 'Default'}
-          </div>
-          <div>
-            <span className="font-medium">Mode:</span> Real API (No Mock Responses)
-          </div>
-        </div>
-        <div className="mt-2 text-xs text-gray-600">
-          ℹ️ The AI will now use your actual Dappier data model instead of predefined responses
-        </div>
       </div>
 
       {/* Dappier Copilot Widget */}

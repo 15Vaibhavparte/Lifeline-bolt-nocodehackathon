@@ -13,6 +13,25 @@ export class DappierService {
     this.apiKey = import.meta.env.VITE_DAPPIER_API_KEY || '';
     this.dataModelId = import.meta.env.VITE_DAPPIER_PROJECT_ID || '';
     this.baseUrl = import.meta.env.VITE_DAPPIER_BASE_URL || 'https://api.dappier.com';
+    
+    console.log('🔧 DappierService constructor - Project ID:', this.dataModelId);
+    console.log('🔧 DappierService constructor - Will use endpoint:', this.getEndpoint());
+  }
+
+  // Get the correct endpoint based on project ID format
+  private getEndpoint(): string {
+    const isAiModel = this.dataModelId.startsWith('am_');
+    return isAiModel ? 
+      `${this.baseUrl}/app/aimodel/${this.dataModelId}` : 
+      `${this.baseUrl}/app/datamodel/${this.dataModelId}`;
+  }
+
+  // Get the correct request body format based on project ID
+  private getRequestBody(query: string, context?: any): any {
+    const isAiModel = this.dataModelId.startsWith('am_');
+    return isAiModel ? 
+      { query } : 
+      { query, context: context || {} };
   }
 
   // Helper method to extract text from response
@@ -54,7 +73,11 @@ export class DappierService {
         throw new Error('Dappier API key or data model ID not configured');
       }
 
-      const endpoint = `${this.baseUrl}/app/datamodel/${this.dataModelId}`;
+      const endpoint = this.getEndpoint();
+      console.log('🔍 DappierService queryAI - Using endpoint:', endpoint);
+      
+      const requestBody = this.getRequestBody(prompt, context);
+      console.log('🔍 DappierService queryAI - Request body:', requestBody);
       
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -99,7 +122,7 @@ export class DappierService {
       const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
       try {
-        const endpoint = `${this.baseUrl}/app/datamodel/${this.dataModelId}`;
+        const endpoint = this.getEndpoint();
         
         const response = await fetch(endpoint, {
           method: 'POST',
@@ -107,10 +130,7 @@ export class DappierService {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${this.apiKey}`
           },
-          body: JSON.stringify({
-            query: "Health check: Please respond with 'OK' if you're working properly.",
-            context: { type: 'health_check' }
-          }),
+          body: JSON.stringify(this.getRequestBody("Health check: Please respond with 'OK' if you're working properly.", { type: 'health_check' })),
           signal: controller.signal
         });
 
@@ -331,7 +351,7 @@ export class DappierService {
     `;
 
     try {
-      const response = await this.queryAI(prompt, { 
+      await this.queryAI(prompt, { 
         type: 'donor_matching',
         urgency: requestData.urgencyLevel
       });
@@ -469,7 +489,7 @@ export class DappierService {
     `;
 
     try {
-      const response = await this.queryAI(prompt, { type: 'demand_prediction' });
+      await this.queryAI(prompt, { type: 'demand_prediction' });
       
       // Mock response structure
       return {
