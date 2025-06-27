@@ -40,28 +40,66 @@ if (!hasValidCredentials) {
 }
 
 // Create a mock client for development when credentials are not available
-const createMockClient = () => ({
-  auth: {
-    signUp: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
-    signInWithPassword: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
-    signOut: () => Promise.resolve({ error: null }),
-    getSession: () => Promise.resolve({ data: { session: null }, error: null }),
-    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-  },
-  from: () => ({
-    select: () => Promise.resolve({ data: [], error: null }),
-    insert: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
-    update: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
-    delete: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
-  }),
-});
+const createMockClient = () => {
+  const mockQueryBuilder = {
+    select: () => mockQueryBuilder,
+    insert: () => mockQueryBuilder,
+    update: () => mockQueryBuilder,
+    delete: () => mockQueryBuilder,
+    eq: () => mockQueryBuilder,
+    neq: () => mockQueryBuilder,
+    gt: () => mockQueryBuilder,
+    gte: () => mockQueryBuilder,
+    lt: () => mockQueryBuilder,
+    lte: () => mockQueryBuilder,
+    like: () => mockQueryBuilder,
+    ilike: () => mockQueryBuilder,
+    is: () => mockQueryBuilder,
+    in: () => mockQueryBuilder,
+    contains: () => mockQueryBuilder,
+    order: () => mockQueryBuilder,
+    limit: () => mockQueryBuilder,
+    range: () => mockQueryBuilder,
+    single: () => mockQueryBuilder,
+    then: (resolve: any) => {
+      console.warn('🚧 Using mock Supabase client - real data not available');
+      return Promise.resolve({ 
+        data: [], 
+        error: { 
+          message: 'Supabase not configured. Please check your environment variables.',
+          code: 'MOCK_CLIENT',
+          details: 'Environment variables VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are not properly set.'
+        } 
+      }).then(resolve);
+    },
+    catch: (reject: any) => reject
+  };
 
-export const supabase = hasValidCredentials 
-  ? createClient(supabaseUrl, supabaseAnonKey)
-  : createMockClient() as any;
+  return {
+    auth: {
+      signUp: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
+      signInWithPassword: () => Promise.resolve({ data: null, error: { message: 'Supabase not configured' } }),
+      signOut: () => Promise.resolve({ error: null }),
+      getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+    },
+    from: () => mockQueryBuilder,
+  };
+};
+
+export const supabase = (() => {
+  // Always try to create real client if we have URL and key
+  if (supabaseUrl && supabaseAnonKey) {
+    console.log('✅ Creating real Supabase client');
+    return createClient(supabaseUrl, supabaseAnonKey);
+  } else {
+    console.warn('⚠️ Creating mock Supabase client - credentials missing');
+    return createMockClient() as any;
+  }
+})();
 
 // Export a flag to check if Supabase is properly configured
-export const isSupabaseConfigured = hasValidCredentials;
+export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
 
 // Types for our database
 export type UserRole = 'donor' | 'recipient' | 'hospital' | 'organizer';

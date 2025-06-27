@@ -91,18 +91,30 @@ export const bloodDriveService = {
       return data;
     } catch (error: any) {
       console.error('Error in searchBloodDrives:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        name: error.name,
+        stack: error.stack
+      });
       
       // Check for specific error types
       if (error.message?.includes('404') || error.code === '404') {
         throw new Error('Blood drives table not found. Please check your database setup.');
       }
       
-      if (error.message?.includes('JWT')) {
+      if (error.message?.includes('JWT') || error.message?.includes('Invalid JWT')) {
         throw new Error('Authentication error. Please check your Supabase credentials.');
       }
       
       if (error.message?.includes('relation "blood_drives" does not exist')) {
         throw new Error('Blood drives table does not exist. Please run the database migrations.');
+      }
+
+      if (error.code === 'MOCK_CLIENT') {
+        throw new Error('Supabase not configured. Please check your environment variables in Netlify.');
       }
       
       throw error;

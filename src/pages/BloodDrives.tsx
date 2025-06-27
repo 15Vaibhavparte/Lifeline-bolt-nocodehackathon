@@ -24,6 +24,7 @@ import { donorService } from '../services/donorService';
 import { useAuthContext } from '../contexts/AuthContext';
 import { BloodDrive, isSupabaseConfigured } from '../lib/supabase';
 import { DebugPanel } from '../components/DebugPanel';
+import { testSupabaseConnection } from '../utils/connectionTest';
 
 export function BloodDrives() {
   const [activeTab, setActiveTab] = useState('upcoming');
@@ -46,6 +47,9 @@ export function BloodDrives() {
   ];
 
   useEffect(() => {
+    // Run connection test first
+    testSupabaseConnection();
+    
     loadBloodDrives();
     if (user && profile?.role === 'donor') {
       loadUserDonor();
