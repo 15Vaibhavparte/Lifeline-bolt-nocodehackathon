@@ -12,15 +12,23 @@ export const bloodDriveService = {
     userLat?: number;
     userLon?: number;
   }) {    try {
-      console.log('🔍 Starting searchBloodDrives with simplified query...');
+      console.log('🔍 Starting searchBloodDrives with correct columns...');
       
-      // Start with the absolute simplest query possible
+      // Use only columns that actually exist in the database
       let query = supabase
         .from('blood_drives')
-        .select('*');
+        .select(`
+          id,
+          organizer_id,
+          title,
+          description,
+          event_date,
+          start_time,
+          end_time,
+          location
+        `);
         
-      // Don't apply any filters initially to see if we can get ANY data
-      console.log('🔍 Executing basic select * query...');
+      console.log('🔍 Executing query with existing columns only...');
       
       const { data, error } = await query.limit(10);
       
@@ -40,17 +48,13 @@ export const bloodDriveService = {
       
       console.log('🔍 Raw data from database:', data);
       
-      // If we got data, now try to filter it in JavaScript instead of SQL
+      // If we got data, now try to filter it in JavaScript
       if (data && data.length > 0) {
         console.log('🔍 Filtering data in JavaScript...');
         
-        // Filter for active drives
-        const activeDrives = data.filter(drive => drive.is_active === true);
-        console.log('🔍 Active drives:', activeDrives);
-        
-        // Filter by date range if we have active drives
-        if (filters.dateRange && activeDrives.length > 0) {
-          const filteredByDate = activeDrives.filter(drive => {
+        // Filter by date range if specified
+        if (filters.dateRange) {
+          const filteredByDate = data.filter((drive: any) => {
             const driveDate = drive.event_date;
             return driveDate >= filters.dateRange!.start && driveDate <= filters.dateRange!.end;
           });
@@ -58,7 +62,7 @@ export const bloodDriveService = {
           return filteredByDate;
         }
         
-        return activeDrives;
+        return data;
       }
       
       return data || [];
@@ -326,28 +330,19 @@ export const bloodDriveService = {
     if (error) throw error;
   },
 
-  // Get past blood drives with statistics
+  // Get past blood drives
   async getPastBloodDrives(organizerId?: string) {
     let query = supabase
       .from('blood_drives')
       .select(`
         id,
+        organizer_id,
         title,
         description,
         event_date,
         start_time,
         end_time,
-        address,
-        location_point,
-        organizer_id,
-        contact_phone,
-        contact_email,
-        is_active,
-        registered_donors,
-        capacity,
-        requirements,
-        created_at,
-        updated_at
+        location
       `)
       .lt('event_date', new Date().toISOString().split('T')[0]);
 
@@ -359,7 +354,6 @@ export const bloodDriveService = {
 
     if (error) throw error;
 
-    // Return basic data without statistics for now
     return data || [];
   },
 };
