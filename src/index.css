@@ -5,6 +5,31 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom CSS for BoltBadge */
+.bolt-badge-container {
+  /* Ensure badge stays on top of everything */
+  z-index: 9999;
+}
+
+/* Smooth animations for the badge */
+.bolt-badge-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.bolt-badge-hover:hover {
+  transform: scale(1.1) rotate(5deg);
+}
+
+/* Responsive adjustments for very small screens */
+@media (max-width: 480px) {
+  .bolt-badge-mobile {
+    top: 0.5rem !important;
+    right: 0.5rem !important;
+    width: 3rem !important;
+    height: 3rem !important;
+  }
+}
+
 /* Custom styles for AI response formatting */
 .ai-response {
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;

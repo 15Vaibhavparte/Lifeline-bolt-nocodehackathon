@@ -29,9 +29,58 @@
         width: 350px !important;
         height: 500px !important;
       }
+      
+      /* Bolt Badge Styles */
+      .bolt-badge {
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        width: 64px;
+        height: 64px;
+        z-index: 9999;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+      }
+      
+      .bolt-badge:hover {
+        transform: scale(1.1) rotate(5deg);
+        filter: drop-shadow(0 8px 12px rgba(0, 0, 0, 0.15));
+      }
+      
+      .bolt-badge img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        image-rendering: crisp-edges;
+      }
+      
+      /* Responsive sizing */
+      @media (max-width: 768px) {
+        .bolt-badge {
+          width: 48px;
+          height: 48px;
+          top: 12px;
+          right: 12px;
+        }
+      }
+      
+      @media (max-width: 480px) {
+        .bolt-badge {
+          width: 40px;
+          height: 40px;
+          top: 8px;
+          right: 8px;
+        }
+      }
     </style>
   </head>
   <body>
+    <!-- Bolt Badge - Top Right Corner -->
+    <a href="https://bolt.new" target="_blank" class="bolt-badge" title="Powered by Bolt.new - Click to visit">
+      <img src="/bolt-badge.png" alt="Powered by Bolt.new" />
+    </a>
+    
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     

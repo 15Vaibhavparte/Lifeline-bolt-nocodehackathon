@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase, Profile } from '../lib/supabase';
 
 export function useAuth() {
@@ -23,7 +23,7 @@ export function useAuth() {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event: any, session: Session | null) => {
       setSession(session);
       setUser(session?.user ?? null);
       
@@ -65,29 +65,79 @@ export function useAuth() {
   };
 
   const signUp = async (email: string, password: string, userData: Partial<Profile>) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    try {
+      console.log('🔄 Starting signup process for:', email);
+      console.log('🔧 Environment check:', {
+        hasUrl: !!import.meta.env.VITE_SUPABASE_URL,
+        hasKey: !!import.meta.env.VITE_SUPABASE_ANON_KEY,
+        mode: import.meta.env.MODE
+      });
+      
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: userData // Pass user data to auth metadata for better profile creation
+        }
+      });
 
-    if (error) throw error;
+      if (error) {
+        console.error('❌ Signup error details:', {
+          message: error.message,
+          status: error.status,
+          code: error.code || 'NO_CODE'
+        });
+        
+        // Handle specific error cases with user-friendly messages
+        if (error.message.includes('email_address_invalid')) {
+          throw new Error('Please enter a valid email address');
+        }
+        if (error.message.includes('password_too_short')) {
+          throw new Error('Password must be at least 6 characters long');
+        }
+        if (error.message.includes('signup_disabled')) {
+          throw new Error('Account creation is currently disabled. Please contact support.');
+        }
+        if (error.message.includes('invalid_credentials')) {
+          throw new Error('Invalid email or password format');
+        }
+        
+        throw error;
+      }
 
-    if (data.user) {
-      // Create profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([
-          {
-            id: data.user.id,
-            email: data.user.email!,
-            ...userData,
-          },
-        ]);
+      console.log('✅ Signup successful:', data);
 
-      if (profileError) throw profileError;
+      if (data.user) {
+        // Only create profile if user is confirmed or email confirmation is disabled
+        if (data.user.email_confirmed_at || !data.user.confirmation_sent_at) {
+          console.log('🔄 Creating user profile...');
+          
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert([
+              {
+                id: data.user.id,
+                email: data.user.email!,
+                ...userData,
+              },
+            ]);
+
+          if (profileError) {
+            console.error('❌ Profile creation error:', profileError);
+            throw profileError;
+          }
+          
+          console.log('✅ Profile created successfully');
+        } else {
+          console.log('📧 Confirmation email sent. User needs to confirm email before profile creation.');
+        }
+      }
+
+      return data;
+    } catch (error) {
+      console.error('❌ SignUp failed:', error);
+      throw error;
     }
-
-    return data;
   };
 
   const signIn = async (email: string, password: string) => {
