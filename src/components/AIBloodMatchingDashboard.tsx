@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import GeminiBloodMatchingChat from './GeminiBloodMatchingChat';
 import EmergencyRequestForm from './EmergencyRequestForm';
-import { geminiAI } from '../services/geminiAI';
+import { geminiAIDirect } from '../services/geminiAIDirect';
 
 interface DashboardTab {
   id: string;
@@ -45,10 +45,16 @@ const AIBloodMatchingDashboard: React.FC = () => {
     const checkSystemStatus = async () => {
       setSystemStatus(prev => ({ ...prev, checking: true }));
       
+      // Use direct connection for production reliability
+      console.log('🔄 Using direct Supabase + Gemini AI connection (Production Mode)');
+      
       const [aiStatus, dbStatus] = await Promise.all([
-        geminiAI.testConnection(),
-        geminiAI.testDatabase()
+        geminiAIDirect.testConnection(),
+        geminiAIDirect.testDatabase()
       ]);
+
+      console.log('✅ AI Status:', aiStatus ? 'Online' : 'Offline');
+      console.log('✅ DB Status:', dbStatus ? 'Online' : 'Offline');
 
       setSystemStatus({
         aiOnline: aiStatus,
@@ -186,25 +192,28 @@ const AIBloodMatchingDashboard: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className="flex flex-col xl:flex-row gap-4 sm:gap-6">
           {/* Main Content */}
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             {/* Tab Navigation */}
-            <div className="bg-white rounded-lg shadow-sm border mb-6">
-              <div className="border-b border-gray-200">
-                <nav className="flex">
+            <div className="bg-white rounded-lg shadow-sm border mb-4 sm:mb-6">
+              <div className="border-b border-gray-200 overflow-x-auto">
+                <nav className="flex min-w-max">
                   {tabs.map((tab) => (
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`flex items-center gap-2 px-6 py-3 text-sm font-medium border-b-2 transition-colors ${
+                      className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                         activeTab === tab.id
                           ? 'border-red-500 text-red-600 bg-red-50'
                           : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                       }`}
                     >
-                      {tab.icon}
-                      {tab.name}
+                      <span className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0">
+                        {tab.icon}
+                      </span>
+                      <span className="hidden sm:inline">{tab.name}</span>
+                      <span className="sm:hidden text-xs">{tab.name.split(' ')[0]}</span>
                     </button>
                   ))}
                 </nav>
@@ -218,42 +227,42 @@ const AIBloodMatchingDashboard: React.FC = () => {
           </div>
 
           {/* Sidebar */}
-          <div className="lg:w-80 space-y-6">
+          <div className="xl:w-80 space-y-4 sm:space-y-6">
             {/* Emergency Alerts */}
             <div className="bg-white rounded-lg shadow-sm border">
-              <div className="p-4 border-b border-gray-200">
+              <div className="p-3 sm:p-4 border-b border-gray-200">
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-red-500" />
-                  <h3 className="font-semibold text-gray-900">Emergency Alerts</h3>
+                  <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 flex-shrink-0" />
+                  <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Emergency Alerts</h3>
                 </div>
               </div>
               
-              <div className="p-4">
+              <div className="p-3 sm:p-4">
                 {emergencyAlerts.length === 0 ? (
-                  <p className="text-gray-500 text-sm text-center py-4">
+                  <p className="text-gray-500 text-xs sm:text-sm text-center py-4">
                     No active emergency alerts
                   </p>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-2 sm:space-y-3">
                     {emergencyAlerts.slice(0, 5).map((alert) => (
-                      <div key={alert.id} className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-medium text-red-800">{alert.bloodType}</span>
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getUrgencyColor(alert.urgency)}`}>
+                      <div key={alert.id} className="p-2 sm:p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1 sm:gap-2 mb-1">
+                              <span className="font-medium text-red-800 text-sm truncate">{alert.bloodType}</span>
+                              <span className={`px-1 sm:px-2 py-1 rounded-full text-xs font-medium ${getUrgencyColor(alert.urgency)} flex-shrink-0`}>
                                 {alert.urgency}
                               </span>
                             </div>
-                            <p className="text-sm text-red-700 mb-1">{alert.hospitalName}</p>
-                            <div className="flex items-center gap-2">
-                              <Clock className="w-3 h-3 text-red-500" />
+                            <p className="text-xs sm:text-sm text-red-700 mb-1 truncate">{alert.hospitalName}</p>
+                            <div className="flex items-center gap-1 sm:gap-2">
+                              <Clock className="w-3 h-3 text-red-500 flex-shrink-0" />
                               <span className="text-xs text-red-600">
                                 {alert.timestamp.toLocaleTimeString()}
                               </span>
                             </div>
                           </div>
-                          <div className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(alert.status)}`}>
+                          <div className={`px-1 sm:px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(alert.status)} flex-shrink-0`}>
                             {alert.status}
                           </div>
                         </div>
@@ -266,50 +275,50 @@ const AIBloodMatchingDashboard: React.FC = () => {
 
             {/* Quick Stats */}
             <div className="bg-white rounded-lg shadow-sm border">
-              <div className="p-4 border-b border-gray-200">
-                <h3 className="font-semibold text-gray-900">System Overview</h3>
+              <div className="p-3 sm:p-4 border-b border-gray-200">
+                <h3 className="font-semibold text-gray-900 text-sm sm:text-base">System Overview</h3>
               </div>
               
-              <div className="p-4 space-y-4">
+              <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-blue-500" />
-                    <span className="text-sm text-gray-600">AI Responses</span>
+                  <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1">
+                    <Activity className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm text-gray-600 truncate">AI Responses</span>
                   </div>
-                  <span className="font-medium">Real-time</span>
+                  <span className="font-medium text-xs sm:text-sm flex-shrink-0">Real-time</span>
                 </div>
                 
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-green-500" />
-                    <span className="text-sm text-gray-600">Donor Network</span>
+                  <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1">
+                    <Users className="w-3 h-3 sm:w-4 sm:h-4 text-green-500 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm text-gray-600 truncate">Donor Network</span>
                   </div>
-                  <span className="font-medium">Active</span>
+                  <span className="font-medium text-xs sm:text-sm flex-shrink-0">Active</span>
                 </div>
                 
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-purple-500" />
-                    <span className="text-sm text-gray-600">Blood Drives</span>
+                  <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1">
+                    <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-purple-500 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm text-gray-600 truncate">Blood Drives</span>
                   </div>
-                  <span className="font-medium">Available</span>
+                  <span className="font-medium text-xs sm:text-sm flex-shrink-0">Available</span>
                 </div>
               </div>
             </div>
 
             {/* Emergency Contact */}
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Phone className="w-5 h-5 text-red-600" />
-                <h3 className="font-semibold text-red-800">Emergency Hotline</h3>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4">
+              <div className="flex items-center gap-1 sm:gap-2 mb-2">
+                <Phone className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0" />
+                <h3 className="font-semibold text-red-800 text-sm sm:text-base">Emergency Hotline</h3>
               </div>
-              <p className="text-sm text-red-700 mb-3">
+              <p className="text-xs sm:text-sm text-red-700 mb-3">
                 For life-threatening emergencies, call immediately:
               </p>
               <div className="text-center">
                 <a
                   href="tel:108"
-                  className="text-2xl font-bold text-red-800 hover:text-red-900"
+                  className="text-xl sm:text-2xl font-bold text-red-800 hover:text-red-900 transition-colors"
                 >
                   108
                 </a>

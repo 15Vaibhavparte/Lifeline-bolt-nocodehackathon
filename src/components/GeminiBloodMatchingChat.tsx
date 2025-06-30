@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, User, Heart, AlertTriangle, Clock } from 'lucide-react';
+import { geminiAIDirect } from '../services/geminiAIDirect';
 
 interface Message {
   id: string;
@@ -61,45 +62,38 @@ const GeminiBloodMatchingChat: React.FC<GeminiChatProps> = ({ onEmergencyAlert }
     setMessages(prev => [...prev, typingMessage]);
 
     try {
-      const response = await fetch('http://localhost:3002/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: inputMessage,
-          history: conversationHistory
-        }),
-      });
+      // Use direct Gemini AI service for production reliability
+      const response = await geminiAIDirect.sendMessage(
+        inputMessage,
+        conversationHistory
+      );
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to get AI response');
       }
-
-      const data = await response.json();
 
       // Remove typing indicator
       setMessages(prev => prev.filter(msg => !msg.isTyping));
 
-      if (data.success) {
+      if (response.success) {
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
-          content: data.message,
+          content: response.message,
           timestamp: new Date(),
-          functionCalls: data.functionCalls
+          functionCalls: response.functionCalls
         };
 
         setMessages(prev => [...prev, assistantMessage]);
-        setConversationHistory(data.conversationHistory || []);
+        setConversationHistory(response.conversationHistory || []);
 
         // Check if this was an emergency request
-        if (data.functionCalls?.some((call: any) => call.name === 'registerEmergencyRequest')) {
-          onEmergencyAlert?.(data.functionCalls.find((call: any) => call.name === 'registerEmergencyRequest'));
+        if (response.functionCalls?.some((call: any) => call.name === 'registerEmergencyRequest')) {
+          onEmergencyAlert?.(response.functionCalls.find((call: any) => call.name === 'registerEmergencyRequest'));
         }
 
       } else {
-        throw new Error(data.error || 'Unknown error occurred');
+        throw new Error(response.error || 'Unknown error occurred');
       }
 
     } catch (error) {

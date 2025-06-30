@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AlertTriangle, Phone, MapPin, Clock, Send, CheckCircle } from 'lucide-react';
-import { geminiAI, BloodType, UrgencyLevel, bloodTypes, urgencyLevels } from '../services/geminiAI';
+import { geminiAIDirect, BloodType, UrgencyLevel, bloodTypes, urgencyLevels } from '../services/geminiAIDirect';
 
 interface EmergencyRequestFormProps {
   onRequestSubmitted?: (requestId: string) => void;
@@ -34,7 +34,7 @@ const EmergencyRequestForm: React.FC<EmergencyRequestFormProps> = ({ onRequestSu
       }
 
       // Submit the emergency request via Gemini AI
-      const response = await geminiAI.registerEmergencyRequest({
+      const response = await geminiAIDirect.registerEmergencyRequest({
         bloodType: formData.bloodType,
         hospitalName: formData.hospitalName,
         contactInfo: formData.contactInfo,

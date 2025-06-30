@@ -1,4 +1,4 @@
--- Fix Row Level Security for blood_drives table
+@-- Fix Row Level Security for blood_drives table
 -- Run this in your Supabase SQL Editor
 
 -- 1. First, let's check if RLS is enabled

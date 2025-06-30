@@ -1,6 +1,4 @@
 import { BloodType } from '../lib/supabase';
-import { googleTranslationService } from './googleTranslationService';
-import { fallbackTranslationService } from './fallbackTranslationService';
 
 interface TranslationRequest {
   text: string;
@@ -21,10 +19,9 @@ interface LanguageDetectionResponse {
   confidence: number;
 }
 
-export class LingoTranslationService {
+export class GoogleTranslationService {
   private apiKey: string;
-  private projectId: string;
-  private baseUrl: string;
+  private baseUrl: string = 'https://translation.googleapis.com/language/translate/v2';
   private cache: Map<string, TranslationResponse> = new Map();
 
   // Supported languages for blood donation platform
@@ -82,13 +79,31 @@ export class LingoTranslationService {
       'de': 'Blutgruppe',
       'ta': 'இரத்த வகை',
       'bn': 'রক্তের গ্রুপ'
+    },
+    'donor': {
+      'hi': 'दाता',
+      'es': 'donante',
+      'fr': 'donneur',
+      'ar': 'متبرع',
+      'pt': 'doador',
+      'de': 'Spender',
+      'ta': 'நன்கொடையாளர்',
+      'bn': 'দাতা'
+    },
+    'patient': {
+      'hi': 'रोगी',
+      'es': 'paciente',
+      'fr': 'patient',
+      'ar': 'مريض',
+      'pt': 'paciente',
+      'de': 'Patient',
+      'ta': 'நோயாளி',
+      'bn': 'রোগী'
     }
   };
 
   constructor() {
-    this.apiKey = import.meta.env.VITE_LINGO_API_KEY || '';
-    this.projectId = import.meta.env.VITE_LINGO_PROJECT_ID || '';
-    this.baseUrl = import.meta.env.VITE_LINGO_BASE_URL || 'https://api.lingo.dev';
+    this.apiKey = import.meta.env.VITE_GOOGLE_TRANSLATE_API_KEY || import.meta.env.VITE_GOOGLE_AI_KEY || '';
   }
 
   // Main translation function
@@ -114,35 +129,36 @@ export class LingoTranslationService {
         return response;
       }
 
-      // Use Lingo API for translation
-      const response = await fetch(`${this.baseUrl}/v1/translate`, {
-        method: 'POST',
+      // Use Google Translate API
+      const params = new URLSearchParams({
+        key: this.apiKey,
+        q: request.text,
+        target: request.targetLanguage,
+        format: 'text'
+      });
+
+      if (request.sourceLanguage && request.sourceLanguage !== 'auto') {
+        params.append('source', request.sourceLanguage);
+      }
+
+      const response = await fetch(`${this.baseUrl}?${params}`, {
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
-          'X-Project-ID': this.projectId
-        },
-        body: JSON.stringify({
-          text: request.text,
-          target_language: request.targetLanguage,
-          source_language: request.sourceLanguage || 'auto',
-          context: request.context || 'healthcare',
-          domain: 'medical',
-          preserve_formatting: true
-        })
+          'Accept': 'application/json'
+        }
       });
 
       if (!response.ok) {
-        throw new Error(`Lingo API error: ${response.status}`);
+        throw new Error(`Google Translate API error: ${response.status}`);
       }
 
       const data = await response.json();
       
       const translationResponse: TranslationResponse = {
-        translatedText: data.translated_text,
-        sourceLanguage: data.source_language,
-        targetLanguage: data.target_language,
-        confidence: data.confidence || 0.9
+        translatedText: data.data.translations[0].translatedText,
+        sourceLanguage: data.data.translations[0].detectedSourceLanguage || request.sourceLanguage || 'en',
+        targetLanguage: request.targetLanguage,
+        confidence: 0.95
       };
 
       // Cache the result
@@ -152,44 +168,28 @@ export class LingoTranslationService {
     } catch (error) {
       console.error('Translation failed:', error);
       
-      // Fallback to Google Translate service
-      try {
-        console.log('Falling back to Google Translate...');
-        return await googleTranslationService.translate(request);
-      } catch (fallbackError) {
-        console.error('Google Translate also failed, using fallback dictionary:', fallbackError);
-        
-        // Final fallback: use offline dictionary
-        return await fallbackTranslationService.translate(request);
-      }
+      // Fallback to basic translation or return original
+      return {
+        translatedText: request.text,
+        sourceLanguage: request.sourceLanguage || 'en',
+        targetLanguage: request.targetLanguage,
+        confidence: 0
+      };
     }
   }
 
   // Batch translate multiple texts
   async batchTranslate(texts: string[], targetLanguage: string, sourceLanguage?: string): Promise<string[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/v1/batch-translate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
-          'X-Project-ID': this.projectId
-        },
-        body: JSON.stringify({
-          texts: texts,
-          target_language: targetLanguage,
-          source_language: sourceLanguage || 'auto',
-          context: 'healthcare',
-          domain: 'medical'
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`Lingo API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      return data.translations.map((t: any) => t.translated_text);
+      const translations = await Promise.all(
+        texts.map(text => this.translate({
+          text,
+          targetLanguage,
+          sourceLanguage
+        }))
+      );
+      
+      return translations.map(t => t.translatedText);
     } catch (error) {
       console.error('Batch translation failed:', error);
       return texts; // Return original texts as fallback
@@ -199,26 +199,28 @@ export class LingoTranslationService {
   // Detect language
   async detectLanguage(text: string): Promise<LanguageDetectionResponse> {
     try {
-      const response = await fetch(`${this.baseUrl}/v1/detect-language`, {
-        method: 'POST',
+      const params = new URLSearchParams({
+        key: this.apiKey,
+        q: text
+      });
+
+      const response = await fetch(`https://translation.googleapis.com/language/translate/v2/detect?${params}`, {
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
-          'X-Project-ID': this.projectId
-        },
-        body: JSON.stringify({
-          text: text
-        })
+          'Accept': 'application/json'
+        }
       });
 
       if (!response.ok) {
-        throw new Error(`Lingo API error: ${response.status}`);
+        throw new Error(`Google Translate API error: ${response.status}`);
       }
 
       const data = await response.json();
+      const detection = data.data.detections[0][0];
+      
       return {
-        detectedLanguage: data.detected_language,
-        confidence: data.confidence
+        detectedLanguage: detection.language,
+        confidence: detection.confidence
       };
     } catch (error) {
       console.error('Language detection failed:', error);
@@ -265,24 +267,23 @@ export class LingoTranslationService {
 
   // Check if the service is properly configured
   isConfigured(): boolean {
-    return !!this.apiKey && !!this.projectId;
+    return !!this.apiKey;
   }
 
   // Check if the service is available
   async checkAvailability(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/v1/health`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`
-        }
+      // Test with a simple translation
+      const response = await this.translate({
+        text: 'test',
+        targetLanguage: 'es'
       });
-      return response.ok;
+      return response.confidence > 0;
     } catch (error) {
-      console.error('Lingo service availability check failed:', error);
+      console.error('Google Translate service availability check failed:', error);
       return false;
     }
   }
 }
 
-export const lingoTranslationService = new LingoTranslationService();
+export const googleTranslationService = new GoogleTranslationService();
