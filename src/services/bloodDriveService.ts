@@ -357,28 +357,57 @@ export const bloodDriveService = {
 
   // Get past blood drives
   async getPastBloodDrives(organizerId?: string) {
-    let query = supabase
-      .from('blood_drives')
-      .select(`
-        id,
-        organizer_id,
-        title,
-        description,
-        event_date,
-        start_time,
-        end_time,
-        location
-      `)
-      .lt('event_date', new Date().toISOString().split('T')[0]);
+    try {
+      console.log('🔍 Loading past blood drives with timeout protection...');
+      
+      let query = supabase
+        .from('blood_drives')
+        .select(`
+          id,
+          organizer_id,
+          title,
+          description,
+          event_date,
+          start_time,
+          end_time,
+          location
+        `)
+        .lt('event_date', new Date().toISOString().split('T')[0]);
 
-    if (organizerId) {
-      query = query.eq('organizer_id', organizerId);
+      if (organizerId) {
+        query = query.eq('organizer_id', organizerId);
+      }
+
+      query = query.order('event_date', { ascending: false });
+
+      // Add timeout protection
+      const result = await withTimeout(
+        query,
+        6000, // 6 second timeout
+        'Past blood drives query timed out - possible RLS issue'
+      ) as { data: any[] | null; error: any | null };
+
+      if (result.error) {
+        console.error('Past blood drives query error:', result.error);
+        console.log('🚨 Past blood drives query failed, returning empty array...');
+        return [];
+      }
+
+      console.log('✅ Successfully fetched past blood drives:', result.data);
+      return result.data || [];
+      
+    } catch (error: any) {
+      console.error('Error in getPastBloodDrives (with timeout):', error);
+      
+      // If it's a timeout error, return empty array instead of throwing
+      if (error.message?.includes('timeout') || error.message?.includes('RLS')) {
+        console.log('🚨 Past blood drives query timed out, returning empty array...');
+        return [];
+      }
+      
+      // For other errors, still return empty array to prevent loading state issues
+      console.log('🚨 Past blood drives query failed, returning empty array...');
+      return [];
     }
-
-    const { data, error } = await query.order('event_date', { ascending: false });
-
-    if (error) throw error;
-
-    return data || [];
   },
 };

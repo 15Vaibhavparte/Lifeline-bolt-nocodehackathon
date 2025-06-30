@@ -86,24 +86,33 @@ export function BloodDrives() {
       
       console.log('Loading blood drives with date range:', { startDate, endDate, filterLocation });
       
-      // Get active blood drives with search filters
-      const upcoming = await bloodDriveService.searchBloodDrives({
-        dateRange: {
-          start: startDate,
-          end: endDate
-        },
-        city: filterLocation || undefined
-      });
+      // Load upcoming drives first (most important)
+      try {
+        const upcoming = await bloodDriveService.searchBloodDrives({
+          dateRange: {
+            start: startDate,
+            end: endDate
+          },
+          city: filterLocation || undefined
+        });
+        
+        console.log('Upcoming blood drives fetched:', upcoming);
+        setUpcomingEvents(upcoming || []);
+      } catch (upcomingError) {
+        console.error('Error loading upcoming blood drives:', upcomingError);
+        setUpcomingEvents([]);
+      }
       
-      console.log('Upcoming blood drives fetched:', upcoming);
+      // Load past drives separately (less critical)
+      try {
+        const past = await bloodDriveService.getPastBloodDrives();
+        console.log('Past blood drives fetched:', past);
+        setPastEvents(past || []);
+      } catch (pastError) {
+        console.error('Error loading past blood drives:', pastError);
+        setPastEvents([]);
+      }
       
-      // Get past blood drives
-      const past = await bloodDriveService.getPastBloodDrives();
-      
-      console.log('Past blood drives fetched:', past);
-      
-      setUpcomingEvents(upcoming || []);
-      setPastEvents(past || []);
     } catch (error: any) {
       let errorMessage = 'Failed to load blood drives';
       
@@ -122,14 +131,8 @@ export function BloodDrives() {
       
       setError(errorMessage);
       console.error('Error loading blood drives:', error);
-      console.error('Error details:', {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint,
-        stack: error.stack
-      });
     } finally {
+      console.log('🏁 Blood drives loading completed, setting loading to false');
       setLoading(false);
     }
   }, [filterLocation]);
@@ -246,7 +249,7 @@ export function BloodDrives() {
           transition={{ delay: 0.1 }}
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12"
         >
-          {stats.map((stat, index) => (
+          {stats.map((stat) => (
             <div key={stat.label} className="bg-white rounded-xl p-6 shadow-soft text-center">
               <div className={`inline-flex items-center justify-center w-12 h-12 rounded-lg mb-4 ${stat.color}`}>
                 <stat.icon className="h-6 w-6" />
