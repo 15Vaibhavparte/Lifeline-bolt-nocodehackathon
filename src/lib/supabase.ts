@@ -91,7 +91,23 @@ export const supabase = (() => {
   // Always try to create real client if we have URL and key
   if (supabaseUrl && supabaseAnonKey) {
     console.log('✅ Creating real Supabase client');
-    return createClient(supabaseUrl, supabaseAnonKey);
+    return createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      },
+      global: {
+        headers: {
+          'Access-Control-Allow-Origin': '*'
+        }
+      },
+      realtime: {
+        params: {
+          eventsPerSecond: 10
+        }
+      }
+    });
   } else {
     console.warn('⚠️ Creating mock Supabase client - credentials missing');
     return createMockClient() as any;
@@ -100,6 +116,114 @@ export const supabase = (() => {
 
 // Export a flag to check if Supabase is properly configured
 export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
+
+// Utility function to wrap Supabase queries with timeout and error handling
+export const withTimeout = async <T>(
+  promise: Promise<T>, 
+  timeoutMs: number = 10000,
+  errorMessage: string = 'Query timeout'
+): Promise<T> => {
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error(`${errorMessage} after ${timeoutMs}ms`)), timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } catch (error) {
+    // Log the error for debugging
+    console.error('Supabase query error:', error);
+    
+    // If it's a timeout error, provide additional context
+    if (error instanceof Error && error.message.includes('timeout')) {
+      console.error('💡 Possible causes:');
+      console.error('1. Row Level Security (RLS) policies blocking access');
+      console.error('2. Network connectivity issues');
+      console.error('3. Supabase server overloaded');
+      console.error('🔧 Try running the RLS fix: fix_rls_blood_drives.sql');
+    }
+    
+    throw error;
+  }
+};
+
+// Helper function to create queries with automatic timeout handling
+export const createTimedQuery = (tableName: string) => {
+  const baseQuery = supabase.from(tableName);
+  
+  // Override the query methods to include automatic timeout
+  const originalSelect = baseQuery.select.bind(baseQuery);
+  const originalInsert = baseQuery.insert.bind(baseQuery);
+  const originalUpdate = baseQuery.update.bind(baseQuery);
+  const originalDelete = baseQuery.delete.bind(baseQuery);
+
+  return {
+    ...baseQuery,
+    select: (columns?: string) => {
+      const query = originalSelect(columns);
+      const originalThen = query.then?.bind(query);
+      
+      if (originalThen) {
+        query.then = (onFulfilled: any, onRejected?: any) => {
+          return withTimeout(
+            originalThen(onFulfilled, onRejected),
+            8000,
+            `SELECT query on ${tableName} timed out`
+          );
+        };
+      }
+      
+      return query;
+    },
+    insert: (values: any) => {
+      const query = originalInsert(values);
+      const originalThen = query.then?.bind(query);
+      
+      if (originalThen) {
+        query.then = (onFulfilled: any, onRejected?: any) => {
+          return withTimeout(
+            originalThen(onFulfilled, onRejected),
+            8000,
+            `INSERT query on ${tableName} timed out`
+          );
+        };
+      }
+      
+      return query;
+    },
+    update: (values: any) => {
+      const query = originalUpdate(values);
+      const originalThen = query.then?.bind(query);
+      
+      if (originalThen) {
+        query.then = (onFulfilled: any, onRejected?: any) => {
+          return withTimeout(
+            originalThen(onFulfilled, onRejected),
+            8000,
+            `UPDATE query on ${tableName} timed out`
+          );
+        };
+      }
+      
+      return query;
+    },
+    delete: () => {
+      const query = originalDelete();
+      const originalThen = query.then?.bind(query);
+      
+      if (originalThen) {
+        query.then = (onFulfilled: any, onRejected?: any) => {
+          return withTimeout(
+            originalThen(onFulfilled, onRejected),
+            8000,
+            `DELETE query on ${tableName} timed out`
+          );
+        };
+      }
+      
+      return query;
+    }
+  };
+};
 
 // Types for our database
 export type UserRole = 'donor' | 'recipient' | 'hospital' | 'organizer';

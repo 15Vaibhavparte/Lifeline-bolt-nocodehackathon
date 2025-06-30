@@ -50,18 +50,25 @@ export function BloodDrives() {
   ];
 
   useEffect(() => {
-    // Emergency: Test direct API access to bypass all potential issues
-    testDirectApiAccess();
-    testWithServiceKey();
-    
-    // Run connection test first
-    testSupabaseConnection();
-    
-    // Run database access test
-    testDatabaseAccess();
-    
-    // Run comprehensive database test
-    comprehensiveDatabaseTest();
+    // Only run tests in development mode to avoid production timeout issues
+    if (import.meta.env.DEV) {
+      console.log('🔧 Running database tests in development mode...');
+      
+      // Emergency: Test direct API access to bypass all potential issues
+      testDirectApiAccess();
+      testWithServiceKey();
+      
+      // Run connection test first
+      testSupabaseConnection();
+      
+      // Run database access test
+      testDatabaseAccess();
+      
+      // Run comprehensive database test
+      comprehensiveDatabaseTest();
+    } else {
+      console.log('🚀 Production mode: Skipping database tests to avoid timeouts');
+    }
     
     loadBloodDrives();
     if (user && profile?.role === 'donor') {

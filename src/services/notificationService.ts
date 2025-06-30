@@ -1,25 +1,52 @@
 import { supabase, Notification } from '../lib/supabase';
 
 export const notificationService = {
-  // Subscribe to real-time notifications
+  // Subscribe to real-time notifications with retry mechanism
   subscribeToNotifications(userId: string, callback: (notification: any) => void) {
-    const channel = supabase
-      .channel(`public:notifications:user_id=eq.${userId}`)
-      .on('postgres_changes', 
-        { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'notifications',
-          filter: `user_id=eq.${userId}`
-        }, 
-        (payload: any) => {
-          callback(payload.new);
-        }
-      )
-      .subscribe();
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    const createSubscription = () => {
+      console.log(`📡 Creating notification subscription for user ${userId} (attempt ${retryCount + 1}/${maxRetries + 1})`);
+      
+      const channel = supabase
+        .channel(`public:notifications:user_id=eq.${userId}`)
+        .on('postgres_changes', 
+          { 
+            event: 'INSERT', 
+            schema: 'public', 
+            table: 'notifications',
+            filter: `user_id=eq.${userId}`
+          }, 
+          (payload: any) => {
+            console.log('📨 Received notification:', payload.new);
+            callback(payload.new);
+          }
+        )
+        .subscribe((status: any) => {
+          console.log(`📡 Subscription status: ${status}`);
+          
+          if (status === 'SUBSCRIPTION_ERROR' && retryCount < maxRetries) {
+            console.log(`❌ Subscription error, retrying in 2 seconds... (${retryCount + 1}/${maxRetries})`);
+            retryCount++;
+            setTimeout(() => {
+              supabase.removeChannel(channel);
+              createSubscription();
+            }, 2000);
+          } else if (status === 'SUBSCRIBED') {
+            console.log('✅ Successfully subscribed to notifications');
+            retryCount = 0; // Reset retry count on success
+          }
+        });
+
+      return channel;
+    };
+
+    const channel = createSubscription();
 
     // Return a cleanup function that unsubscribes from the channel
     return () => {
+      console.log('🧹 Cleaning up notification subscription');
       supabase.removeChannel(channel);
     };
   },
