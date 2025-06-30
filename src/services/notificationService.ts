@@ -3,7 +3,7 @@ import { supabase, Notification } from '../lib/supabase';
 export const notificationService = {
   // Subscribe to real-time notifications
   subscribeToNotifications(userId: string, callback: (notification: any) => void) {
-    return supabase
+    const channel = supabase
       .channel(`public:notifications:user_id=eq.${userId}`)
       .on('postgres_changes', 
         { 
@@ -12,11 +12,16 @@ export const notificationService = {
           table: 'notifications',
           filter: `user_id=eq.${userId}`
         }, 
-        (payload) => {
+        (payload: any) => {
           callback(payload.new);
         }
       )
       .subscribe();
+
+    // Return a cleanup function that unsubscribes from the channel
+    return () => {
+      supabase.removeChannel(channel);
+    };
   },
 
   // Create a new notification
@@ -133,7 +138,7 @@ export const notificationService = {
       }
       
       // Create notifications for all eligible donors
-      const notifications = eligibleDonors.map(donor => ({
+      const notifications = eligibleDonors.map((donor: any) => ({
         user_id: donor.user_id,
         title: `🚨 EMERGENCY: ${data.bloodType} Blood Needed`,
         message: `Urgent request at ${data.hospitalName}. Your blood type is needed immediately.`,

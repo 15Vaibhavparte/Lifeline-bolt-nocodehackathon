@@ -16,6 +16,7 @@ import {
   Activity,
   Zap
 } from 'lucide-react';
+import bloodDropVideo from '../assets/videos/Blood_Drop_Video_Generation_Request.mp4';
 
 export function HomePage() {
   const stats = [
@@ -58,12 +59,23 @@ export function HomePage() {
     <div className="min-h-screen">
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-primary-600 via-primary-700 to-primary-800 text-white overflow-hidden">
-        <div className="absolute inset-0 bg-black opacity-10"></div>
-        <div className="absolute inset-0">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-primary-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse-slow"></div>
-          <div className="absolute top-40 right-10 w-72 h-72 bg-secondary-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse-slow animation-delay-2000"></div>
-          <div className="absolute bottom-20 left-1/2 w-72 h-72 bg-primary-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse-slow animation-delay-4000"></div>
+        {/* Video Background */}
+        <div className="absolute inset-0 w-full h-full">
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+          >
+            <source src={bloodDropVideo} type="video/mp4" />
+          </video>
+          {/* Dark overlay for text readability */}
+          <div className="absolute inset-0 bg-black bg-opacity-50"></div>
         </div>
+        
+        {/* Gradient overlay for additional styling */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary-600/70 via-primary-700/60 to-primary-800/70"></div>
         
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">

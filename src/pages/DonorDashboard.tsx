@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Heart, 
@@ -8,13 +8,11 @@ import {
   Bell,
   Calendar,
   Users,
-  Activity,
   Settings,
   Shield,
   Droplets,
   Phone,
-  CheckCircle,
-  AlertCircle
+  CheckCircle
 } from 'lucide-react';
 import { useAuthContext } from '../contexts/AuthContext';
 import { notificationService } from '../services/notificationService';
@@ -32,7 +30,16 @@ export function DonorDashboard() {
     if (user) {
       loadDonorProfile();
       loadNotifications();
-      setupRealtimeNotifications();
+      
+      // Setup realtime notifications and store the cleanup function
+      const unsubscribe = setupRealtimeNotifications();
+      
+      // Cleanup function to unsubscribe when component unmounts or user changes
+      return () => {
+        if (unsubscribe && typeof unsubscribe === 'function') {
+          unsubscribe();
+        }
+      };
     }
   }, [user]);
 
@@ -55,7 +62,7 @@ export function DonorDashboard() {
         const userNotifications = await notificationService.getUserNotifications(user.id, 10);
         
         // Transform notifications to the format expected by the UI
-        const formattedNotifications = userNotifications.map(notification => ({
+        const formattedNotifications = userNotifications.map((notification: any) => ({
           id: notification.id,
           type: notification.type.includes('emergency') ? 'urgent' : 'normal',
           message: notification.message,
@@ -74,10 +81,10 @@ export function DonorDashboard() {
     }
   };
 
-  const setupRealtimeNotifications = () => {
-    if (!user) return;
+  const setupRealtimeNotifications = (): (() => void) | null => {
+    if (!user) return null;
     
-    notificationService.subscribeToNotifications(user.id, (newNotification) => {
+    return notificationService.subscribeToNotifications(user.id, (newNotification) => {
       // Add the new notification to the list
       const formattedNotification = {
         id: newNotification.id,
@@ -237,7 +244,7 @@ export function DonorDashboard() {
           transition={{ delay: 0.1 }}
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
         >
-          {stats.map((stat, index) => (
+          {stats.map((stat) => (
             <div key={stat.label} className="bg-white rounded-xl p-6 shadow-soft">
               <div className="flex items-center justify-between">
                 <div>
