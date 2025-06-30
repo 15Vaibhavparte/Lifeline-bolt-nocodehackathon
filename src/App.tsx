@@ -7,6 +7,7 @@ import { Header } from './components/layout/Header';
 import { Footer } from './components/layout/Footer';
 import LazyComponent from './components/LazyComponent';
 import ErrorBoundary from './components/ErrorBoundary';
+import BoltBadge from './components/BoltBadge';
 
 // Simple inline loading component to avoid import issues
 const LoadingSpinner = ({ text = "Loading..." }: { text?: string }) => (
@@ -74,6 +75,9 @@ function App() {
                     className=""
                   />
                 </ErrorBoundary>
+
+                {/* Bolt Badge */}
+                <BoltBadge />
               </div>
             </Router>
           </VoiceAccessibilityProvider>
