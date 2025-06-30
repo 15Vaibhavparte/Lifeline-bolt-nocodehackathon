@@ -21,12 +21,12 @@ import {
   Download,
   Wallet
 } from 'lucide-react';
-import { AlgorandWallet } from '../components/AlgorandWallet';
-import { BlockchainDonationRecord } from '../components/BlockchainDonationRecord';
+import LazyComponent from '../components/LazyComponent';
 
 export function Profile() {
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
+  
   const [profileData, setProfileData] = useState({
     firstName: 'Rahul',
     lastName: 'Sharma',
@@ -411,8 +411,9 @@ export function Profile() {
         <div className="p-6">
           <div className="space-y-6">
             {donationHistory.map((donation) => (
-              <BlockchainDonationRecord
+              <LazyComponent 
                 key={donation.id}
+                importComponent={() => import('../components/BlockchainDonationRecord').then(m => m.BlockchainDonationRecord)}
                 donation={donation}
                 onRecordToBlockchain={handleRecordToBlockchain}
               />
@@ -425,7 +426,9 @@ export function Profile() {
 
   const renderWalletTab = () => (
     <div className="space-y-6">
-      <AlgorandWallet />
+      <LazyComponent 
+        importComponent={() => import('../components/AlgorandWallet').then(m => m.AlgorandWallet)}
+      />
       
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
         <h4 className="font-medium text-blue-900 mb-2">Blockchain Benefits</h4>
@@ -634,3 +637,5 @@ export function Profile() {
     </div>
   );
 }
+// Default export for lazy loading
+export default Profile;

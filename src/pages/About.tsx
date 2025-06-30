@@ -12,6 +12,7 @@ import {
   Lightbulb,
   CheckCircle
 } from 'lucide-react';
+import { LazyImage } from '../components/LazyImage';
 
 export function About() {
   const features = [
@@ -221,7 +222,7 @@ export function About() {
                 viewport={{ once: true }}
                 className="bg-white rounded-2xl p-6 shadow-soft text-center"
               >
-                <img
+                <LazyImage
                   src={member.image}
                   alt={member.name}
                   className="w-24 h-24 rounded-full mx-auto mb-4 object-cover"
@@ -349,3 +350,5 @@ export function About() {
     </div>
   );
 }
+// Default export for lazy loading
+export default About;

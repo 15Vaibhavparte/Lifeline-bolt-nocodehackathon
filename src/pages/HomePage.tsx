@@ -1,7 +1,8 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BloodTypeCompatibility } from '../components/BloodTypeCompatibility';
+import { ScrollDrivenImageSequence } from '../components/ScrollDrivenImageSequence';
+import { sequenceConfigs } from '../utils/imageSequences';
 import { 
   Heart, 
   Users, 
@@ -9,7 +10,6 @@ import {
   Shield, 
   Smartphone, 
   Globe, 
-  Award,
   ArrowRight,
   Phone,
   MapPin,
@@ -25,35 +25,6 @@ export function HomePage() {
     { label: 'Avg Response Time', value: '< 30 min', icon: Clock },
     { label: 'Cities Covered', value: '50+', icon: MapPin },
   ];
-
-  const features = [
-    {
-      icon: Zap,
-      title: 'Instant Matching',
-      description: 'AI-powered donor-recipient matching in under 30 seconds',
-      color: 'text-yellow-600 bg-yellow-100',
-    },
-    {
-      icon: Shield,
-      title: 'Blockchain Verified',
-      description: 'Tamper-proof donation history and donor verification',
-      color: 'text-blue-600 bg-blue-100',
-    },
-    {
-      icon: Smartphone,
-      title: 'Voice Accessible',
-      description: 'Multilingual voice interface for inclusive access',
-      color: 'text-green-600 bg-green-100',
-    },
-    {
-      icon: Globe,
-      title: 'Real-time Alerts',
-      description: 'Instant notifications for emergency blood requests',
-      color: 'text-purple-600 bg-purple-100',
-    },
-  ];
-
-  const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
   return (
     <div className="min-h-screen">
@@ -166,7 +137,7 @@ export function HomePage() {
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Features Section - Scroll Driven Image Sequences */}
       <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
@@ -180,29 +151,166 @@ export function HomePage() {
               Why Choose Lifeline?
             </h2>
             <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Advanced technology meets compassionate care to create the most efficient 
-              blood donation platform in the world.
+              Experience the technology that makes life-saving blood donation faster, 
+              safer, and more accessible than ever before.
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {features.map((feature, index) => (
+          {/* Scroll-driven sequences grid */}
+          <div className="space-y-20">
+            {Object.entries(sequenceConfigs).map(([key, config], index) => (
               <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 20 }}
+                key={key}
+                initial={{ opacity: 0, y: 40 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
+                transition={{ duration: 0.8, delay: index * 0.2 }}
                 viewport={{ once: true }}
-                className="bg-white rounded-2xl p-8 shadow-soft hover:shadow-medium transition-all duration-200 group"
+                className={`flex flex-col ${index % 2 === 0 ? 'lg:flex-row' : 'lg:flex-row-reverse'} gap-12 items-center`}
               >
-                <div className={`inline-flex items-center justify-center w-12 h-12 rounded-xl mb-6 ${feature.color} group-hover:scale-110 transition-transform duration-200`}>
-                  <feature.icon className="h-6 w-6" />
+                {/* Content side */}
+                <div className="flex-1 space-y-6">
+                  <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl ${config.color} mb-4`}>
+                    {key === 'aiMatching' && <Zap className="h-8 w-8" />}
+                    {key === 'blockchainVerification' && <Shield className="h-8 w-8" />}
+                    {key === 'voiceInterface' && <Smartphone className="h-8 w-8" />}
+                    {key === 'emergencyResponse' && <Globe className="h-8 w-8" />}
+                  </div>
+                  
+                  <div>
+                    <h3 className="text-3xl font-bold text-gray-900 mb-4">
+                      {config.title}
+                    </h3>
+                    <p className="text-lg text-gray-600 leading-relaxed">
+                      {config.description}
+                    </p>
+                  </div>
+
+                  {/* Feature highlights */}
+                  <div className="space-y-3">
+                    {key === 'aiMatching' && (
+                      <>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                          <span className="text-gray-700">Match donors in under 30 seconds</span>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                          <span className="text-gray-700">99.8% compatibility accuracy</span>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                          <span className="text-gray-700">Smart location-based prioritization</span>
+                        </div>
+                      </>
+                    )}
+                    {key === 'blockchainVerification' && (
+                      <>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                          <span className="text-gray-700">Immutable donation records</span>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                          <span className="text-gray-700">Verified donor authenticity</span>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                          <span className="text-gray-700">Transparent trust system</span>
+                        </div>
+                      </>
+                    )}
+                    {key === 'voiceInterface' && (
+                      <>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span className="text-gray-700">Multi-language support</span>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span className="text-gray-700">Accessibility for all users</span>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span className="text-gray-700">Hands-free emergency requests</span>
+                        </div>
+                      </>
+                    )}
+                    {key === 'emergencyResponse' && (
+                      <>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                          <span className="text-gray-700">Instant alert dispatch</span>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                          <span className="text-gray-700">Real-time response tracking</span>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                          <span className="text-gray-700">24/7 emergency support</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">{feature.title}</h3>
-                <p className="text-gray-600 leading-relaxed">{feature.description}</p>
+
+                {/* Sequence side */}
+                <div className="flex-1">
+                  <ScrollDrivenImageSequence
+                    images={config.frames}
+                    frameHeight={config.frameHeight}
+                    containerClassName="shadow-2xl"
+                    className="hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
               </motion.div>
             ))}
           </div>
+
+          {/* Additional features showcase */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.8 }}
+            viewport={{ once: true }}
+            className="mt-20 bg-white rounded-3xl p-8 shadow-soft"
+          >
+            <div className="text-center mb-8">
+              <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                Advanced Technology Stack
+              </h3>
+              <p className="text-gray-600">
+                Built with cutting-edge technologies for maximum reliability and performance
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className="text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl mx-auto mb-3 flex items-center justify-center">
+                  <Activity className="h-6 w-6 text-white" />
+                </div>
+                <p className="font-medium text-gray-900">Real-time Sync</p>
+              </div>
+              <div className="text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl mx-auto mb-3 flex items-center justify-center">
+                  <Shield className="h-6 w-6 text-white" />
+                </div>
+                <p className="font-medium text-gray-900">HIPAA Compliant</p>
+              </div>
+              <div className="text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl mx-auto mb-3 flex items-center justify-center">
+                  <Zap className="h-6 w-6 text-white" />
+                </div>
+                <p className="font-medium text-gray-900">AI Powered</p>
+              </div>
+              <div className="text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl mx-auto mb-3 flex items-center justify-center">
+                  <Globe className="h-6 w-6 text-white" />
+                </div>
+                <p className="font-medium text-gray-900">Global Network</p>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
 
@@ -243,3 +351,6 @@ export function HomePage() {
     </div>
   );
 }
+
+// Default export for lazy loading
+export default HomePage;

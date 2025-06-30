@@ -23,11 +23,12 @@ import { bloodDriveService } from '../services/bloodDriveService';
 import { donorService } from '../services/donorService';
 import { useAuthContext } from '../contexts/AuthContext';
 import { BloodDrive, isSupabaseConfigured } from '../lib/supabase';
-import { DebugPanel } from '../components/DebugPanel';
 import { testSupabaseConnection } from '../utils/connectionTest';
 import { comprehensiveDatabaseTest } from '../utils/comprehensiveTest';
 import { testDatabaseAccess } from '../utils/testDatabaseAccess';
 import { testDirectApiAccess, testWithServiceKey } from '../utils/emergencyApiTest';
+import { LazyImage } from '../components/LazyImage';
+import LazyComponent from '../components/LazyComponent';
 
 export function BloodDrives() {
   const [activeTab, setActiveTab] = useState('upcoming');
@@ -361,7 +362,7 @@ export function BloodDrives() {
               filteredEvents.map((event) => (
                 <div key={event.id} className="bg-white rounded-xl shadow-soft overflow-hidden hover:shadow-medium transition-shadow">
                   <div className="relative h-48">
-                    <img
+                    <LazyImage
                       src={event.image_url || `https://images.pexels.com/photos/6823568/pexels-photo-6823568.jpeg?auto=compress&cs=tinysrgb&w=800&random=${event.id}`}
                       alt={event.title}
                       className="w-full h-full object-cover"
@@ -514,7 +515,11 @@ export function BloodDrives() {
       </div>
 
       {/* Debug Panel */}
-      <DebugPanel />
+      <LazyComponent 
+        importComponent={() => import('../components/DebugPanel').then(m => m.DebugPanel)}
+      />
     </div>
   );
 }
+// Default export for lazy loading
+export default BloodDrives;

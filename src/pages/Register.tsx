@@ -808,3 +808,5 @@ export function Register() {
     </div>
   );
 }
+// Default export for lazy loading
+export default Register;

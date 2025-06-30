@@ -341,3 +341,5 @@ export function LanguageSettings() {
     </div>
   );
 }
+// Default export for lazy loading
+export default LanguageSettings;

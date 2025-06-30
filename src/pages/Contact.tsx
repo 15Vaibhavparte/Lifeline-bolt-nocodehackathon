@@ -449,3 +449,5 @@ export function Contact() {
     </div>
   );
 }
+// Default export for lazy loading
+export default Contact;

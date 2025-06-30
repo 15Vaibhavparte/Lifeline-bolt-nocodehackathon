@@ -466,3 +466,6 @@ export function DonorDashboard() {
     </div>
   );
 }
+
+// Default export for lazy loading
+export default DonorDashboard;

@@ -434,3 +434,5 @@ export function VoiceSettings() {
     </div>
   );
 }
+// Default export for lazy loading
+export default VoiceSettings;

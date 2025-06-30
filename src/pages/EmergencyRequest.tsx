@@ -400,3 +400,6 @@ export function EmergencyRequest() {
     </div>
   );
 }
+
+// Default export for lazy loading
+export default EmergencyRequest;

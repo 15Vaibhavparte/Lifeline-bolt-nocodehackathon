@@ -509,3 +509,5 @@ export function RecipientDashboard() {
     </div>
   );
 }
+// Default export for lazy loading
+export default RecipientDashboard;
